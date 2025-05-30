@@ -1,6 +1,6 @@
 # main.py (Fixed)
 """
-데이터 비율 설정에 유연하게 대응하는 수정된 main.py
+Modified main.py that flexibly adapts to data ratio settings
 """
 
 import os
@@ -10,7 +10,7 @@ import json
 import time
 from pathlib import Path
 
-# 모듈 임포트
+# Module imports
 from modules.initial_yolo_trainer import InitialYOLOTrainer
 from modules.classification_trainer import ClassificationTrainer
 from modules.iterative_processor import IterativeProcessor
@@ -18,21 +18,21 @@ from modules.object_classifier import ObjectClassifier
 from modules.yolo_active_learning import YOLOActiveLearning
 
 class CompletePipeline:
-    """완전한 파이프라인 관리 클래스 (유연한 데이터 비율 지원)"""
+    """Complete pipeline management class (flexible data ratio support)"""
     
     def __init__(self, config):
         self.config = config
         self.setup_directories()
         
-        print("🔧 파이프라인 설정:")
-        print(f"  - 이미지 디렉토리: {config['images_dir']}")
-        print(f"  - 라벨 디렉토리: {config['labels_dir']}")
-        print(f"  - 결과 저장: {config['iterative_output']}")
-        print(f"  - 데이터 비율: {config['data_percentages']}")
+        print("🔧 Pipeline Configuration:")
+        print(f"  - Image directory: {config['images_dir']}")
+        print(f"  - Label directory: {config['labels_dir']}")
+        print(f"  - Results save: {config['iterative_output']}")
+        print(f"  - Data ratios: {config['data_percentages']}")
         print(f"  - GPU: {config['gpu_num']}")
         
     def setup_directories(self):
-        """필요한 디렉토리 생성"""
+        """Create necessary directories"""
         directories = [
             self.config['initial_yolo_output'],
             self.config['first_inference_output'],
@@ -45,9 +45,9 @@ class CompletePipeline:
             os.makedirs(directory, exist_ok=True)
     
     def step1_initial_yolo_training(self):
-        """스텝 1: 초기 YOLO 모델 학습"""
+        """Step 1: Initial YOLO model training"""
         print("="*80)
-        print("STEP 1: 초기 YOLO 모델 학습")
+        print("STEP 1: Initial YOLO Model Training")
         print("="*80)
         
         trainer = InitialYOLOTrainer(
@@ -64,86 +64,86 @@ class CompletePipeline:
         
         trained_models = trainer.train_all_percentages()
         
-        # 가장 높은 비율의 모델 선택 (100%가 없으면 최대값)
+        # Select model with highest ratio (or maximum value if 100% doesn't exist)
         max_percentage = max(self.config['data_percentages'])
         best_model_path = trained_models.get(max_percentage)
         
         if not best_model_path or not os.path.exists(best_model_path):
-            # 실제로 존재하는 모델 중에서 선택
+            # Select from actually existing models
             available_models = {k: v for k, v in trained_models.items() if v and os.path.exists(v)}
             
             if not available_models:
-                raise Exception("학습된 YOLO 모델이 없습니다.")
+                raise Exception("No trained YOLO models available.")
             
-            # 가장 높은 비율의 모델 선택
+            # Select model with highest available ratio
             max_available_percentage = max(available_models.keys())
             best_model_path = available_models[max_available_percentage]
             
-            print(f"📝 최대 비율 {max_percentage}% 모델이 없어서 {max_available_percentage}% 모델을 사용합니다.")
+            print(f"📝 Using {max_available_percentage}% model as {max_percentage}% model is not available.")
         
-        print(f"✅ 초기 YOLO 모델 학습 완료: {best_model_path}")
+        print(f"✅ Initial YOLO model training completed: {best_model_path}")
         return best_model_path
     
     def step2_first_inference_and_manual_labeling(self, yolo_model_path):
-        """스텝 2: 초기 모델로 첫 추론 + 수동 라벨링 (GUI 대안 포함)"""
+        """Step 2: First inference with initial model + manual labeling (including GUI alternatives)"""
         print("="*80)
-        print("STEP 2: 초기 모델 첫 추론 + 수동 라벨링")
+        print("STEP 2: First Inference with Initial Model + Manual Labeling")
         print("="*80)
         
-        # 기존 라벨링 데이터 확인
+        # Check existing labeling data
         class0_dir = os.path.join(self.config['manual_labeling_output'], 'class0')
         class1_dir = os.path.join(self.config['manual_labeling_output'], 'class1')
         
         if (os.path.exists(class0_dir) and os.path.exists(class1_dir) and 
             len(os.listdir(class0_dir)) > 0 and len(os.listdir(class1_dir)) > 0):
-            print("📂 기존 수동 라벨링 데이터 발견!")
-            print(f"  - Class 0: {len(os.listdir(class0_dir))}개")
-            print(f"  - Class 1: {len(os.listdir(class1_dir))}개")
+            print("📂 Existing manual labeling data found!")
+            print(f"  - Class 0: {len(os.listdir(class0_dir))} items")
+            print(f"  - Class 1: {len(os.listdir(class1_dir))} items")
             
-            use_existing = input("기존 라벨링 데이터를 사용하시겠습니까? (y/n): ").lower().strip()
+            use_existing = input("Would you like to use existing labeling data? (y/n): ").lower().strip()
             if use_existing == 'y':
                 return self.config['manual_labeling_output']
         
-        # 첫 추론 실행
-        print("🔍 초기 모델로 첫 추론 실행...")
+        # Run first inference
+        print("🔍 Running first inference with initial model...")
         self._perform_first_inference(yolo_model_path)
         
-        # 라벨링 방법 선택
-        print("\n🏷️ 수동 라벨링 방법 선택:")
-        print("1. GUI 라벨링 (권장)")
-        print("2. CLI 라벨링 (터미널 기반)")
-        print("3. 배치 라벨링 (파일 기반)")
-        print("4. 자동 라벨링 (신뢰도 기반)")
+        # Select labeling method
+        print("\n🏷️ Select manual labeling method:")
+        print("1. GUI Labeling (Recommended)")
+        print("2. CLI Labeling (Terminal-based)")
+        print("3. Batch Labeling (File-based)")
+        print("4. Auto Labeling (Confidence-based)")
         
         while True:
-            choice = input("선택 (1-4): ").strip()
+            choice = input("Choose (1-4): ").strip()
             
             if choice == '1':
-                # GUI 라벨링 시도
+                # Try GUI labeling
                 try:
                     return self._try_gui_labeling(yolo_model_path)
                 except Exception as e:
-                    print(f"❌ GUI 라벨링 실패: {str(e)}")
-                    print("다른 방법을 선택하세요.")
+                    print(f"❌ GUI labeling failed: {str(e)}")
+                    print("Please choose another method.")
                     continue
                     
             elif choice == '2':
-                # CLI 라벨링
+                # CLI labeling
                 return self._try_cli_labeling(yolo_model_path)
                 
             elif choice == '3':
-                # 배치 라벨링
+                # Batch labeling
                 return self._try_batch_labeling(yolo_model_path)
                 
             elif choice == '4':
-                # 자동 라벨링
+                # Auto labeling
                 return self._try_auto_labeling(yolo_model_path)
                 
             else:
-                print("잘못된 선택입니다. 1-4 중에서 선택하세요.")
+                print("Invalid choice. Please select from 1-4.")
     
     def _perform_first_inference(self, yolo_model_path):
-        """초기 모델로 첫 추론 실행"""
+        """Perform first inference with initial model"""
         from ultralytics import YOLO
         import cv2
         from tqdm import tqdm
@@ -155,7 +155,7 @@ class CompletePipeline:
         image_files = [f for f in os.listdir(self.config['images_dir']) 
                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         
-        print(f"  📸 {len(image_files)}개 이미지에 대해 첫 추론 실행...")
+        print(f"  📸 Running first inference on {len(image_files)} images...")
         
         total_detections = 0
         
@@ -187,10 +187,10 @@ class CompletePipeline:
                 output_path = os.path.join(inference_dir, f"inference_{image_file}")
                 cv2.imwrite(output_path, img)
         
-        print(f"  ✅ 첫 추론 완료: 총 {total_detections}개 객체 탐지됨")
+        print(f"  ✅ First inference completed: {total_detections} objects detected")
     
     def _try_gui_labeling(self, yolo_model_path):
-        """GUI 라벨링 시도"""
+        """Try GUI labeling"""
         try:
             from modules.manual_labeling_ui import ManualLabelingUI
             
@@ -205,57 +205,57 @@ class CompletePipeline:
             labeled_data_path = labeling_ui.run()
             
             if not labeled_data_path:
-                raise Exception("GUI 라벨링이 완료되지 않았습니다.")
+                raise Exception("GUI labeling was not completed.")
             
-            print(f"✅ GUI 라벨링 완료: {labeled_data_path}")
+            print(f"✅ GUI labeling completed: {labeled_data_path}")
             return labeled_data_path
             
         except ImportError as e:
             if "tkinter" in str(e).lower():
-                print("❌ GUI 라이브러리(tkinter)가 설치되지 않았습니다.")
+                print("❌ GUI library (tkinter) is not installed.")
                 print("Ubuntu/Debian: sudo apt-get install python3-tk")
                 print("CentOS/RHEL: sudo yum install tkinter")
             else:
-                print(f"❌ GUI 모듈 임포트 실패: {str(e)}")
+                print(f"❌ GUI module import failed: {str(e)}")
             raise
         except Exception as e:
-            print(f"❌ GUI 실행 실패: {str(e)}")
+            print(f"❌ GUI execution failed: {str(e)}")
             raise
     
     def _try_auto_labeling(self, yolo_model_path):
-        """자동 라벨링 시도 (간단한 구현)"""
-        print("🤖 자동 라벨링 실행 중...")
+        """Try auto labeling (simple implementation)"""
+        print("🤖 Running auto labeling...")
         
-        # 자동 라벨링 임계값 설정
-        threshold_input = input("자동 분류 임계값을 입력하세요 (0.3-0.9, 기본값: 0.6): ").strip()
+        # Set auto labeling threshold
+        threshold_input = input("Enter auto classification threshold (0.3-0.9, default: 0.6): ").strip()
         try:
             threshold = float(threshold_input) if threshold_input else 0.6
         except ValueError:
             threshold = 0.6
         
-        print(f"  📊 임계값: {threshold} (≥ {threshold}: Keep, < {threshold}: Filter)")
+        print(f"  📊 Threshold: {threshold} (≥ {threshold}: Keep, < {threshold}: Filter)")
         
         from ultralytics import YOLO
         import cv2
         from tqdm import tqdm
         
-        # YOLO 모델 로드
+        # Load YOLO model
         model = YOLO(yolo_model_path)
         
-        # 출력 디렉토리
+        # Output directories
         class0_dir = os.path.join(self.config['manual_labeling_output'], 'class0')
         class1_dir = os.path.join(self.config['manual_labeling_output'], 'class1')
         os.makedirs(class0_dir, exist_ok=True)
         os.makedirs(class1_dir, exist_ok=True)
         
-        # 이미지 파일 목록
+        # Image file list
         image_files = [f for f in os.listdir(self.config['images_dir']) 
                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         
         class0_count = 0
         class1_count = 0
         
-        for image_file in tqdm(image_files, desc="자동 라벨링"):
+        for image_file in tqdm(image_files, desc="Auto Labeling"):
             image_path = os.path.join(self.config['images_dir'], image_file)
             
             try:
@@ -278,19 +278,19 @@ class CompletePipeline:
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                         conf = box.conf[0].cpu().numpy()
                         
-                        # 좌표 정수 변환 및 경계 확인
+                        # Convert coordinates to integers and check boundaries
                         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                         h, w = img.shape[:2]
                         x1, y1 = max(0, x1), max(0, y1)
                         x2, y2 = min(w, x2), min(h, y2)
                         
-                        # 유효한 바운딩 박스인지 확인
+                        # Check if bounding box is valid
                         if x2 > x1 and y2 > y1:
-                            # 객체 이미지 추출
+                            # Extract object image
                             obj_img = img[y1:y2, x1:x2]
                             
                             if obj_img.size > 0:
-                                # 신뢰도에 따른 자동 분류
+                                # Auto classification based on confidence
                                 if conf >= threshold:
                                     # Class 0 (Keep)
                                     output_dir = class0_dir
@@ -300,7 +300,7 @@ class CompletePipeline:
                                     output_dir = class1_dir
                                     class1_count += 1
                                 
-                                # 파일명 생성 및 저장
+                                # Generate filename and save
                                 base_name = os.path.splitext(image_file)[0]
                                 obj_filename = f"{base_name}_obj_{i:03d}_conf_{conf:.3f}.jpg"
                                 obj_path = os.path.join(output_dir, obj_filename)
@@ -308,36 +308,36 @@ class CompletePipeline:
                                 cv2.imwrite(obj_path, obj_img)
                                 
             except Exception as e:
-                print(f"⚠️ 오류 ({image_file}): {str(e)}")
+                print(f"⚠️ Error ({image_file}): {str(e)}")
         
         total_objects = class0_count + class1_count
         
-        print(f"\n🎉 자동 라벨링 완료!")
-        print(f"📊 결과:")
-        print(f"   Class 0 (Keep): {class0_count}개")
-        print(f"   Class 1 (Filter): {class1_count}개")
-        print(f"   총 객체: {total_objects}개")
-        print(f"💾 저장 위치: {self.config['manual_labeling_output']}")
+        print(f"\n🎉 Auto labeling completed!")
+        print(f"📊 Results:")
+        print(f"   Class 0 (Keep): {class0_count} items")
+        print(f"   Class 1 (Filter): {class1_count} items")
+        print(f"   Total objects: {total_objects} items")
+        print(f"💾 Save location: {self.config['manual_labeling_output']}")
         
         if total_objects > 0:
             return self.config['manual_labeling_output']
         else:
-            raise Exception("자동 라벨링된 객체가 없습니다.")
+            raise Exception("No objects were auto-labeled.")
     
     def _try_cli_labeling(self, yolo_model_path):
-        """CLI 라벨링 (간단한 구현)"""
-        print("💻 CLI 라벨링은 현재 자동 라벨링으로 대체됩니다.")
+        """CLI labeling (simple implementation)"""
+        print("💻 CLI labeling is currently replaced with auto labeling.")
         return self._try_auto_labeling(yolo_model_path)
     
     def _try_batch_labeling(self, yolo_model_path):
-        """배치 라벨링 (간단한 구현)"""
-        print("📁 배치 라벨링은 현재 자동 라벨링으로 대체됩니다.")
+        """Batch labeling (simple implementation)"""
+        print("📁 Batch labeling is currently replaced with auto labeling.")
         return self._try_auto_labeling(yolo_model_path)
     
     def step3_classification_training(self, labeled_data_path):
-        """스텝 3: Classification 모델 학습"""
+        """Step 3: Classification model training"""
         print("="*80)
-        print("STEP 3: Classification 모델 학습")
+        print("STEP 3: Classification Model Training")
         print("="*80)
         
         trainer = ClassificationTrainer(
@@ -353,7 +353,7 @@ class CompletePipeline:
             ratios=self.config['classification_ratios']
         )
         
-        # 가장 높은 비율의 모델 선택
+        # Select model with highest ratio
         max_ratio = max(self.config['classification_ratios'])
         best_classifier_path = os.path.join(
             self.config['classification_output'], 
@@ -361,22 +361,22 @@ class CompletePipeline:
         )
         
         if not os.path.exists(best_classifier_path):
-            # 실제로 존재하는 분류 모델 찾기
+            # Find actually existing classification models
             import glob
             available_models = glob.glob(os.path.join(self.config['classification_output'], 'densenet121_*.pth'))
             
             if not available_models:
-                raise Exception("Classification 모델 학습에 실패했습니다.")
+                raise Exception("Classification model training failed.")
             
-            # 가장 최근 모델 선택
+            # Select most recent model
             best_classifier_path = max(available_models, key=os.path.getctime)
-            print(f"📝 최대 비율 {max_ratio*100}% 모델이 없어서 {os.path.basename(best_classifier_path)}를 사용합니다.")
+            print(f"📝 Using {os.path.basename(best_classifier_path)} as {max_ratio*100}% model is not available.")
         
-        print(f"✅ Classification 모델 학습 완료: {best_classifier_path}")
+        print(f"✅ Classification model training completed: {best_classifier_path}")
         return best_classifier_path
     
     def step4_iterative_process(self, classifier_path):
-        """스텝 4: Iterative Process 실행"""
+        """Step 4: Run Iterative Process"""
         print("="*80)
         print("STEP 4: Iterative Active Learning Process")
         print("="*80)
@@ -396,103 +396,103 @@ class CompletePipeline:
         
         results = processor.run_iterative_experiments()
         
-        print("✅ Iterative Process 완료!")
+        print("✅ Iterative Process completed!")
         return results
     
     def run_complete_pipeline(self):
-        """완전한 파이프라인 실행"""
+        """Run complete pipeline"""
         total_start_time = time.time()
         
         try:
-            print("🚀 Complete Pipeline 시작!")
+            print("🚀 Starting Complete Pipeline!")
             print("="*80)
             
-            # Step 1: 초기 YOLO 학습
+            # Step 1: Initial YOLO training
             yolo_model_path = self.step1_initial_yolo_training()
             
-            # Step 2: 첫 추론 + 수동 라벨링
+            # Step 2: First inference + manual labeling
             labeled_data_path = self.step2_first_inference_and_manual_labeling(yolo_model_path)
             
-            # Step 3: Classification 학습
+            # Step 3: Classification training
             classifier_path = self.step3_classification_training(labeled_data_path)
             
             # Step 4: Iterative Process
             final_results = self.step4_iterative_process(classifier_path)
             
-            # 총 실행 시간
+            # Total execution time
             total_elapsed = time.time() - total_start_time
             
             print("="*80)
-            print("🎉 전체 파이프라인 완료!")
+            print("🎉 Complete Pipeline Finished!")
             print("="*80)
-            print(f"⏰ 총 실행 시간: {total_elapsed/60:.1f}분")
-            print(f"📊 결과 요약:")
-            print(f"  - 초기 YOLO 모델: {yolo_model_path}")
-            print(f"  - 수동 라벨링 데이터: {labeled_data_path}")
-            print(f"  - Classification 모델: {classifier_path}")
-            print(f"  - 최종 결과: {self.config['iterative_output']}")
+            print(f"⏰ Total execution time: {total_elapsed/60:.1f} minutes")
+            print(f"📊 Results summary:")
+            print(f"  - Initial YOLO model: {yolo_model_path}")
+            print(f"  - Manual labeling data: {labeled_data_path}")
+            print(f"  - Classification model: {classifier_path}")
+            print(f"  - Final results: {self.config['iterative_output']}")
             
             if final_results and "summary" in final_results:
                 summary = final_results["summary"]
-                print(f"📈 Iterative Process 결과:")
-                print(f"  - 성공률: {summary['success_rate']:.1f}%")
-                print(f"  - 처리된 모델: {summary['total_models']}개")
+                print(f"📈 Iterative Process results:")
+                print(f"  - Success rate: {summary['success_rate']:.1f}%")
+                print(f"  - Processed models: {summary['total_models']}")
             
             return final_results
             
         except Exception as e:
-            print(f"❌ 파이프라인 실행 중 오류 발생: {e}")
+            print(f"❌ Error occurred during pipeline execution: {e}")
             import traceback
             traceback.print_exc()
             return None
     
     def run_single_step(self, step_num):
-        """특정 단계만 실행"""
+        """Run specific step only"""
         if step_num == 1:
             return self.step1_initial_yolo_training()
         elif step_num == 2:
-            # 사용 가능한 YOLO 모델 찾기
+            # Find available YOLO models
             import glob
             model_files = glob.glob(os.path.join(self.config['initial_yolo_output'], 'yolov8_*.pt'))
             
             if not model_files:
-                print(f"❌ YOLO 모델을 찾을 수 없습니다: {self.config['initial_yolo_output']}")
-                print("먼저 Step 1을 실행하세요.")
+                print(f"❌ No YOLO models found: {self.config['initial_yolo_output']}")
+                print("Please run Step 1 first.")
                 return None
             
-            # 가장 최근 모델 또는 가장 높은 비율 모델 선택
+            # Select most recent model or highest ratio model
             yolo_model = max(model_files, key=os.path.getctime)
-            print(f"📝 사용할 YOLO 모델: {os.path.basename(yolo_model)}")
+            print(f"📝 Using YOLO model: {os.path.basename(yolo_model)}")
             
             return self.step2_first_inference_and_manual_labeling(yolo_model)
         elif step_num == 3:
             labeled_data = self.config['manual_labeling_output']
             if not os.path.exists(os.path.join(labeled_data, 'class0')):
-                print(f"❌ 수동 라벨링 데이터를 찾을 수 없습니다: {labeled_data}")
-                print("먼저 Step 2를 실행하세요.")
+                print(f"❌ Manual labeling data not found: {labeled_data}")
+                print("Please run Step 2 first.")
                 return None
             return self.step3_classification_training(labeled_data)
         elif step_num == 4:
-            # 사용 가능한 분류 모델 찾기
+            # Find available classification models
             import glob
             classifier_files = glob.glob(os.path.join(self.config['classification_output'], 'densenet121_*.pth'))
             
             if not classifier_files:
-                print(f"❌ Classification 모델을 찾을 수 없습니다: {self.config['classification_output']}")
-                print("먼저 Step 3을 실행하세요.")
+                print(f"❌ No classification models found: {self.config['classification_output']}")
+                print("Please run Step 3 first.")
                 return None
             
-            # 가장 최근 모델 선택
+            # Select most recent model
             classifier = max(classifier_files, key=os.path.getctime)
-            print(f"📝 사용할 Classification 모델: {os.path.basename(classifier)}")
+            print(f"📝 Using Classification model: {os.path.basename(classifier)}")
             
             return self.step4_iterative_process(classifier)
         else:
-            print(f"❌ 유효하지 않은 단계 번호: {step_num}")
+            print(f"❌ Invalid step number: {step_num}")
             return None
 
 def create_default_config():
-    """기본 설정 생성"""
+    """Create default configuration"""
     return {
         'dataset_root': './dataset',
         'images_dir': './dataset/images',
@@ -518,67 +518,67 @@ def create_default_config():
     }
 
 def load_config(config_path):
-    """설정 파일 로드"""
+    """Load configuration file"""
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        print(f"✅ 설정 파일 로드: {config_path}")
+        print(f"✅ Configuration file loaded: {config_path}")
         return config
     except Exception as e:
-        print(f"❌ 설정 파일 로드 실패: {e}")
+        print(f"❌ Configuration file loading failed: {e}")
         return None
 
 def save_config(config, config_path):
-    """설정 파일 저장"""
+    """Save configuration file"""
     try:
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-        print(f"✅ 설정 파일 저장: {config_path}")
+        print(f"✅ Configuration file saved: {config_path}")
     except Exception as e:
-        print(f"❌ 설정 파일 저장 실패: {e}")
+        print(f"❌ Configuration file saving failed: {e}")
 
 def main():
     parser = argparse.ArgumentParser(
         description='Complete Pipeline for YOLO + Classification Active Learning',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-사용 예시:
-  python main.py                              # 전체 파이프라인 실행
-  python main.py --step 1                     # YOLO 학습만
-  python main.py --step 2                     # 첫 추론 + 수동 라벨링만
-  python main.py --step 3                     # Classification 학습만
-  python main.py --step 4                     # Iterative Process만
-  python main.py --config my_config.json      # 설정 파일 사용
-  python main.py --create-config config.json  # 기본 설정 파일 생성
+Usage Examples:
+  python main.py                              # Run complete pipeline
+  python main.py --step 1                     # YOLO training only
+  python main.py --step 2                     # First inference + manual labeling only
+  python main.py --step 3                     # Classification training only
+  python main.py --step 4                     # Iterative Process only
+  python main.py --config my_config.json      # Use configuration file
+  python main.py --create-config config.json  # Create default configuration file
 
-라벨링 방법:
-  1. GUI 라벨링: 직관적인 그래픽 인터페이스 (권장)
-  2. CLI 라벨링: 터미널에서 대화형 라벨링
-  3. 배치 라벨링: 파일 탐색기로 수동 분류
-  4. 자동 라벨링: 신뢰도 기반 자동 분류
+Labeling Methods:
+  1. GUI Labeling: Intuitive graphical interface (Recommended)
+  2. CLI Labeling: Interactive labeling in terminal
+  3. Batch Labeling: Manual classification using file explorer
+  4. Auto Labeling: Automatic classification based on confidence
         """
     )
     
-    parser.add_argument('--config', type=str, help='설정 파일 경로')
+    parser.add_argument('--config', type=str, help='Configuration file path')
     parser.add_argument('--step', type=int, choices=[1, 2, 3, 4], 
-                       help='실행할 단계 (1: YOLO학습, 2: 수동라벨링, 3: Classification, 4: Iterative)')
-    parser.add_argument('--images_dir', type=str, help='이미지 디렉토리 경로')
-    parser.add_argument('--labels_dir', type=str, help='라벨 디렉토리 경로')
-    parser.add_argument('--output_dir', type=str, help='출력 디렉토리 경로')
-    parser.add_argument('--gpu_num', type=int, help='사용할 GPU 번호')
-    parser.add_argument('--create-config', type=str, help='기본 설정 파일을 지정된 경로에 생성')
+                       help='Step to execute (1: YOLO training, 2: Manual labeling, 3: Classification, 4: Iterative)')
+    parser.add_argument('--images_dir', type=str, help='Image directory path')
+    parser.add_argument('--labels_dir', type=str, help='Label directory path')
+    parser.add_argument('--output_dir', type=str, help='Output directory path')
+    parser.add_argument('--gpu_num', type=int, help='GPU number to use')
+    parser.add_argument('--create-config', type=str, help='Create default configuration file at specified path')
     
     args = parser.parse_args()
     
-    # 기본 설정 파일 생성
+    # Create default configuration file
     if args.create_config:
         config = create_default_config()
         save_config(config, args.create_config)
-        print(f"✅ 기본 설정 파일이 생성되었습니다: {args.create_config}")
-        print("설정을 수정한 후 다시 실행하세요.")
+        print(f"✅ Default configuration file created: {args.create_config}")
+        print("Please modify the configuration and run again.")
         return
     
-    # 설정 로드
+    # Load configuration
     if args.config and os.path.exists(args.config):
         config = load_config(args.config)
         if config is None:
@@ -586,10 +586,10 @@ def main():
     else:
         config = create_default_config()
         if args.config:
-            print(f"⚠️ 설정 파일을 찾을 수 없습니다: {args.config}")
-            print("기본 설정을 사용합니다.")
+            print(f"⚠️ Configuration file not found: {args.config}")
+            print("Using default configuration.")
     
-    # 명령행 인수로 설정 오버라이드
+    # Override configuration with command line arguments
     if args.images_dir:
         config['images_dir'] = args.images_dir
     if args.labels_dir:
@@ -599,34 +599,34 @@ def main():
     if args.gpu_num is not None:
         config['gpu_num'] = args.gpu_num
     
-    # 입력 검증
+    # Input validation
     if not os.path.exists(config['images_dir']):
-        print(f"❌ 이미지 디렉토리를 찾을 수 없습니다: {config['images_dir']}")
+        print(f"❌ Image directory not found: {config['images_dir']}")
         return
     
     if not os.path.exists(config['labels_dir']):
-        print(f"❌ 라벨 디렉토리를 찾을 수 없습니다: {config['labels_dir']}")
+        print(f"❌ Label directory not found: {config['labels_dir']}")
         return
     
-    # 파이프라인 실행
+    # Run pipeline
     pipeline = CompletePipeline(config)
     
     if args.step:
-        # 특정 단계만 실행
-        print(f"🎯 Step {args.step} 실행")
+        # Run specific step only
+        print(f"🎯 Running Step {args.step}")
         result = pipeline.run_single_step(args.step)
         if result:
-            print(f"✅ Step {args.step} 완료")
+            print(f"✅ Step {args.step} completed")
         else:
-            print(f"❌ Step {args.step} 실패")
+            print(f"❌ Step {args.step} failed")
     else:
-        # 전체 파이프라인 실행
-        print("🚀 전체 파이프라인 실행")
+        # Run complete pipeline
+        print("🚀 Running complete pipeline")
         result = pipeline.run_complete_pipeline()
         if result:
-            print("✅ 전체 파이프라인 완료")
+            print("✅ Complete pipeline finished")
         else:
-            print("❌ 파이프라인 실행 실패")
+            print("❌ Pipeline execution failed")
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 # modules/classification_trainer.py
 """
-Classification 모델 학습 모듈
-수동 라벨링된 객체 데이터로 DenseNet 분류 모델을 학습시키는 모듈
+Classification Model Training Module
+Module for training DenseNet classification models with manually labeled object data
 """
 
 import os
@@ -21,25 +21,25 @@ import matplotlib.pyplot as plt
 import json
 
 class ObjectDataset(Dataset):
-    """객체 이미지 데이터셋 클래스"""
+    """Object image dataset class"""
     
     def __init__(self, class0_dir, class1_dir, transform=None):
         """
-        객체 이미지 데이터셋 초기화
+        Initialize object image dataset
         
         Args:
-            class0_dir (str): 클래스 0 이미지 디렉토리 경로
-            class1_dir (str): 클래스 1 이미지 디렉토리 경로
-            transform: 이미지 변환기
+            class0_dir (str): Class 0 image directory path
+            class1_dir (str): Class 1 image directory path
+            transform: Image transformer
         """
         self.transform = transform
         self.class_dirs = [class0_dir, class1_dir]
         self.samples = []
         
-        # 각 클래스 디렉토리에서 이미지 로드
+        # Load images from each class directory
         for class_idx, class_dir in enumerate(self.class_dirs):
             if not os.path.isdir(class_dir):
-                print(f"⚠️ 경고: {class_dir} 디렉토리가 존재하지 않습니다.")
+                print(f"⚠️ Warning: Directory {class_dir} does not exist.")
                 continue
                 
             image_count = 0
@@ -47,41 +47,41 @@ class ObjectDataset(Dataset):
                 if img_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
                     img_path = os.path.join(class_dir, img_name)
                     try:
-                        # 이미지 파일이 올바른지 확인
+                        # Check if image file is valid
                         with Image.open(img_path) as img:
                             img.verify()
                         self.samples.append((img_path, class_idx))
                         image_count += 1
                     except Exception as e:
-                        print(f"⚠️ 손상된 이미지 파일 건너뜀: {img_path} - {str(e)}")
+                        print(f"⚠️ Skipping corrupted image file: {img_path} - {str(e)}")
             
-            print(f"클래스 {class_idx}: {image_count}개 이미지 로드됨 ({class_dir})")
+            print(f"Class {class_idx}: {image_count} images loaded ({class_dir})")
         
-        print(f"📊 총 {len(self.samples)}개의 이미지가 로드되었습니다.")
+        print(f"📊 Total {len(self.samples)} images loaded.")
         
         if len(self.samples) == 0:
-            raise ValueError("로드된 이미지가 없습니다. 디렉토리 경로를 확인하세요.")
+            raise ValueError("No images loaded. Please check directory paths.")
         
     def __len__(self):
         return len(self.samples)
     
     def __getitem__(self, idx):
         """
-        데이터셋에서 항목 가져오기
+        Get item from dataset
         
         Args:
-            idx (int): 인덱스
+            idx (int): Index
             
         Returns:
-            tuple: (이미지, 클래스 라벨)
+            tuple: (image, class label)
         """
         img_path, label = self.samples[idx]
         
         try:
             image = Image.open(img_path).convert('RGB')
         except Exception as e:
-            print(f"⚠️ 이미지 로드 실패: {img_path} - {str(e)}")
-            # 오류 시 빈 이미지 반환
+            print(f"⚠️ Image loading failed: {img_path} - {str(e)}")
+            # Return empty image on error
             image = Image.new('RGB', (224, 224), color='black')
         
         if self.transform:
@@ -90,21 +90,21 @@ class ObjectDataset(Dataset):
         return image, label
 
 class ClassificationTrainer:
-    """Classification 모델 학습기"""
+    """Classification model trainer"""
     
     def __init__(self, class0_dir, class1_dir, output_dir, batch_size=16, 
                  num_epochs=30, gpu_num=0, random_seed=13):
         """
-        Classification 학습기 초기화
+        Initialize Classification trainer
         
         Args:
-            class0_dir (str): 클래스 0 이미지 디렉토리
-            class1_dir (str): 클래스 1 이미지 디렉토리
-            output_dir (str): 결과 저장 디렉토리
-            batch_size (int): 배치 크기
-            num_epochs (int): 학습 에폭 수
-            gpu_num (int): 사용할 GPU 번호
-            random_seed (int): 랜덤 시드
+            class0_dir (str): Class 0 image directory
+            class1_dir (str): Class 1 image directory
+            output_dir (str): Results save directory
+            batch_size (int): Batch size
+            num_epochs (int): Number of training epochs
+            gpu_num (int): GPU number to use
+            random_seed (int): Random seed
         """
         self.class0_dir = class0_dir
         self.class1_dir = class1_dir
@@ -114,23 +114,23 @@ class ClassificationTrainer:
         self.gpu_num = gpu_num
         self.random_seed = random_seed
         
-        # 재현성을 위한 시드 설정
+        # Set seed for reproducibility
         self.set_seed()
         
-        # 디바이스 설정
+        # Device setup
         self.device = torch.device(f"cuda:{self.gpu_num}" if torch.cuda.is_available() else "cpu")
-        print(f"🔧 사용 장치: {self.device}")
+        print(f"🔧 Using device: {self.device}")
         
-        # 결과 저장 디렉토리 생성
+        # Create results save directory
         os.makedirs(self.output_dir, exist_ok=True)
         
-        # 이미지 변환기 정의
+        # Define image transformers
         self.data_transforms = {
             'train': transforms.Compose([
                 transforms.Resize((224, 224)),
-                transforms.RandomHorizontalFlip(p=0.5),  # 데이터 증강
-                transforms.RandomRotation(degrees=10),    # 회전 증강
-                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # 색상 증강
+                transforms.RandomHorizontalFlip(p=0.5),  # Data augmentation
+                transforms.RandomRotation(degrees=10),    # Rotation augmentation
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color augmentation
                 transforms.ToTensor(),
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
             ]),
@@ -141,10 +141,10 @@ class ClassificationTrainer:
             ]),
         }
         
-        print("✅ Classification Trainer 초기화 완료")
+        print("✅ Classification Trainer initialization completed")
     
     def set_seed(self):
-        """재현성을 위한 시드 설정"""
+        """Set seed for reproducibility"""
         torch.manual_seed(self.random_seed)
         torch.cuda.manual_seed(self.random_seed)
         torch.cuda.manual_seed_all(self.random_seed)
@@ -154,7 +154,7 @@ class ClassificationTrainer:
         torch.backends.cudnn.benchmark = False
     
     def init_weights(self, m):
-        """가중치 초기화 함수"""
+        """Weight initialization function"""
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
             nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             if m.bias is not None:
@@ -164,58 +164,58 @@ class ClassificationTrainer:
             nn.init.constant_(m.bias, 0)
     
     def create_model(self):
-        """DenseNet121 모델 생성"""
-        print("🏗️ DenseNet121 모델 생성 중...")
+        """Create DenseNet121 model"""
+        print("🏗️ Creating DenseNet121 model...")
         
-        # DenseNet121 모델 초기화 (사전 훈련된 가중치 사용)
+        # Initialize DenseNet121 model (use pre-trained weights)
         model = models.densenet121(pretrained=True)
         
-        # 특징 추출 레이어 대부분 고정 (과적합 방지)
+        # Freeze most feature extraction layers (prevent overfitting)
         for param in model.features.parameters():
             param.requires_grad = False
             
-        # 마지막 dense block만 학습 가능하게 설정
+        # Make only last dense block trainable
         for param in model.features.denseblock4.parameters():
             param.requires_grad = True
             
-        # 마지막 정규화 레이어도 학습 가능하게 설정
+        # Make last normalization layer trainable
         for param in model.features.norm5.parameters():
             param.requires_grad = True
         
-        # 분류기 레이어 교체 (드롭아웃 포함)
+        # Replace classifier layer (include dropout)
         num_features = model.classifier.in_features
         model.classifier = nn.Sequential(
-            nn.Dropout(0.3),  # 과적합 방지
-            nn.Linear(num_features, 2)  # 이진 분류
+            nn.Dropout(0.3),  # Prevent overfitting
+            nn.Linear(num_features, 2)  # Binary classification
         )
         
-        # 새로 추가한 레이어 가중치 초기화
+        # Initialize weights for newly added layers
         model.classifier.apply(self.init_weights)
         
         model = model.to(self.device)
-        print("✅ 모델 생성 및 GPU 로딩 완료")
+        print("✅ Model creation and GPU loading completed")
         
         return model
     
     def train_model(self, model, dataloaders, criterion, optimizer, scheduler, ratio, 
                    metric='val_f1', patience=10):
         """
-        모델 학습 함수
+        Model training function
         
         Args:
-            model: 학습할 모델
-            dataloaders: 데이터 로더 딕셔너리
-            criterion: 손실 함수
-            optimizer: 옵티마이저
-            scheduler: 학습률 스케줄러
-            ratio: 현재 사용 중인 데이터 비율
-            metric: 모델 선택 기준 메트릭
-            patience: 조기 종료 인내심
+            model: Model to train
+            dataloaders: Data loader dictionary
+            criterion: Loss function
+            optimizer: Optimizer
+            scheduler: Learning rate scheduler
+            ratio: Current data ratio being used
+            metric: Model selection criterion metric
+            patience: Early stopping patience
             
         Returns:
-            tuple: (학습 기록, 최고 성능, 최고 성능 에폭)
+            tuple: (training history, best performance, best performance epoch)
         """
-        print(f"🚀 모델 학습 시작 (데이터 비율: {ratio*100:.0f}%)")
+        print(f"🚀 Starting model training (Data ratio: {ratio*100:.0f}%)")
         
         history = {
             'train_loss': [], 'train_acc': [],
@@ -229,65 +229,65 @@ class ClassificationTrainer:
         best_epoch = 0
         early_stop_counter = 0
         
-        print(f"📊 학습 설정:")
-        print(f"  - 에폭: {self.num_epochs}")
-        print(f"  - 조기 종료 기준: {metric}")
-        print(f"  - 조기 종료 인내심: {patience}")
+        print(f"📊 Training configuration:")
+        print(f"  - Epochs: {self.num_epochs}")
+        print(f"  - Early stopping criterion: {metric}")
+        print(f"  - Early stopping patience: {patience}")
         
         for epoch in range(self.num_epochs):
             print(f'\n📅 Epoch {epoch+1}/{self.num_epochs}')
             print('-' * 50)
             
-            # 각 에폭은 학습과 검증 단계를 가짐
+            # Each epoch has training and validation phases
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    model.train()  # 학습 모드
+                    model.train()  # Training mode
                 else:
-                    model.eval()   # 평가 모드
+                    model.eval()   # Evaluation mode
                     
                 running_loss = 0.0
                 all_preds = []
                 all_labels = []
                 
-                # 진행률 표시를 위한 tqdm
+                # tqdm for progress display
                 pbar = tqdm(dataloaders[phase], desc=f'{phase.upper()}')
                 
-                # 데이터 반복
+                # Iterate through data
                 for inputs, labels in pbar:
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
                     
-                    # 매개변수 그래디언트 초기화
+                    # Zero parameter gradients
                     optimizer.zero_grad()
                     
-                    # 순전파
+                    # Forward pass
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = model(inputs)
                         _, preds = torch.max(outputs, 1)
                         loss = criterion(outputs, labels)
                         
-                        # 학습 단계에서만 역전파 + 최적화
+                        # Backward pass + optimize only in training phase
                         if phase == 'train':
                             loss.backward()
-                            # 그래디언트 클리핑 (과적합 방지)
+                            # Gradient clipping (prevent overfitting)
                             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                             optimizer.step()
                             
-                    # 통계 수집
+                    # Collect statistics
                     running_loss += loss.item() * inputs.size(0)
                     all_preds.extend(preds.cpu().numpy())
                     all_labels.extend(labels.cpu().numpy())
                     
-                    # 진행률 표시 업데이트
+                    # Update progress display
                     pbar.set_postfix({'Loss': f'{loss.item():.4f}'})
                 
-                # 에폭 성능 계산
+                # Calculate epoch performance
                 epoch_loss = running_loss / len(dataloaders[phase].dataset)
                 epoch_acc = accuracy_score(all_labels, all_preds)
                 
                 print(f'{phase.upper()} - Loss: {epoch_loss:.4f}, Acc: {epoch_acc:.4f}')
                 
-                # 검증 단계에서 추가 메트릭 계산
+                # Calculate additional metrics in validation phase
                 if phase == 'val':
                     precision = precision_score(all_labels, all_preds, average='binary', zero_division=0)
                     recall = recall_score(all_labels, all_preds, average='binary', zero_division=0)
@@ -295,20 +295,20 @@ class ClassificationTrainer:
                     
                     print(f'VAL - Precision: {precision:.4f}, Recall: {recall:.4f}, F1: {f1:.4f}')
                     
-                    # 기록 저장
+                    # Save history
                     history['val_loss'].append(epoch_loss)
                     history['val_acc'].append(epoch_acc)
                     history['val_precision'].append(precision)
                     history['val_recall'].append(recall)
                     history['val_f1'].append(f1)
                     
-                    # 학습률 스케줄러 업데이트
+                    # Update learning rate scheduler
                     if scheduler is not None:
                         scheduler.step(epoch_loss)
                         current_lr = optimizer.param_groups[0]['lr']
-                        print(f'📉 현재 학습률: {current_lr:.6f}')
+                        print(f'📉 Current learning rate: {current_lr:.6f}')
                     
-                    # 최고 성능 모델 체크
+                    # Check best performance model
                     if metric == 'val_acc':
                         current_score = epoch_acc
                     elif metric == 'val_precision':
@@ -318,61 +318,61 @@ class ClassificationTrainer:
                     elif metric == 'val_f1':
                         current_score = f1
                     else:
-                        current_score = f1  # 기본값
+                        current_score = f1  # Default value
                     
                     if current_score > best_score:
                         best_score = current_score
                         best_epoch = epoch
                         best_model_wts = model.state_dict().copy()
-                        print(f"🎉 새로운 최고 성능! (에폭 {epoch+1}, {metric} = {current_score:.4f})")
+                        print(f"🎉 New best performance! (Epoch {epoch+1}, {metric} = {current_score:.4f})")
                         early_stop_counter = 0
                     else:
                         early_stop_counter += 1
-                        print(f"⏳ 성능 향상 없음: {early_stop_counter}/{patience}")
+                        print(f"⏳ No performance improvement: {early_stop_counter}/{patience}")
                         
                         if early_stop_counter >= patience:
-                            print(f"🛑 조기 종료: {patience}번 연속 성능 향상 없음")
+                            print(f"🛑 Early stopping: {patience} consecutive epochs without improvement")
                             break
                 else:
-                    # 훈련 단계 기록
+                    # Training phase history
                     history['train_loss'].append(epoch_loss)
                     history['train_acc'].append(epoch_acc)
             
-            # 조기 종료 확인
+            # Check early stopping
             if early_stop_counter >= patience:
-                print(f"🏁 학습을 {epoch+1}번째 에폭에서 조기 종료합니다.")
+                print(f"🏁 Training early stopped at epoch {epoch+1}.")
                 break
         
-        # 학습 완료 정보
+        # Training completion information
         time_elapsed = time.time() - start_time
-        print(f'\n⏰ 학습 완료: {time_elapsed // 60:.0f}분 {time_elapsed % 60:.0f}초')
-        print(f'🏆 최고 성능: 에폭 {best_epoch+1}, {metric} = {best_score:.4f}')
+        print(f'\n⏰ Training completed: {time_elapsed // 60:.0f}min {time_elapsed % 60:.0f}sec')
+        print(f'🏆 Best performance: Epoch {best_epoch+1}, {metric} = {best_score:.4f}')
         
-        # 최고 성능 모델 저장
+        # Save best performance model
         model_save_path = os.path.join(self.output_dir, f'densenet121_{int(ratio*100)}.pth')
         torch.save(best_model_wts, model_save_path)
-        print(f"💾 최고 성능 모델 저장: {model_save_path}")
+        print(f"💾 Best performance model saved: {model_save_path}")
         
-        # 학습 기록 저장
+        # Save training history
         history_save_path = os.path.join(self.output_dir, f'training_history_{int(ratio*100)}.json')
         with open(history_save_path, 'w') as f:
-            # numpy 배열을 리스트로 변환하여 JSON 직렬화 가능하게 만듦
+            # Convert numpy arrays to lists for JSON serialization
             json_history = {k: [float(x) for x in v] for k, v in history.items()}
             json.dump(json_history, f, indent=2)
-        print(f"📊 학습 기록 저장: {history_save_path}")
+        print(f"📊 Training history saved: {history_save_path}")
         
-        # 모델을 최고 성능 상태로 복원
+        # Restore model to best performance state
         model.load_state_dict(best_model_wts)
         
         return history, best_score, best_epoch+1
     
     def plot_training_history(self, history, ratio):
-        """학습 기록 시각화"""
+        """Visualize training history"""
         try:
             fig, axes = plt.subplots(2, 2, figsize=(15, 10))
             fig.suptitle(f'Training History - {int(ratio*100)}% Data', fontsize=16)
             
-            # Loss 그래프
+            # Loss graph
             axes[0, 0].plot(history['train_loss'], label='Train Loss', color='blue')
             axes[0, 0].plot(history['val_loss'], label='Val Loss', color='red')
             axes[0, 0].set_title('Loss')
@@ -381,7 +381,7 @@ class ClassificationTrainer:
             axes[0, 0].legend()
             axes[0, 0].grid(True)
             
-            # Accuracy 그래프
+            # Accuracy graph
             axes[0, 1].plot(history['train_acc'], label='Train Acc', color='blue')
             axes[0, 1].plot(history['val_acc'], label='Val Acc', color='red')
             axes[0, 1].set_title('Accuracy')
@@ -390,7 +390,7 @@ class ClassificationTrainer:
             axes[0, 1].legend()
             axes[0, 1].grid(True)
             
-            # Precision, Recall, F1 그래프
+            # Precision, Recall, F1 graph
             axes[1, 0].plot(history['val_precision'], label='Precision', color='green')
             axes[1, 0].plot(history['val_recall'], label='Recall', color='orange')
             axes[1, 0].plot(history['val_f1'], label='F1-Score', color='purple')
@@ -400,7 +400,7 @@ class ClassificationTrainer:
             axes[1, 0].legend()
             axes[1, 0].grid(True)
             
-            # 최종 성능 표시
+            # Final performance display
             final_text = f"""Final Performance:
             Accuracy: {history['val_acc'][-1]:.4f}
             Precision: {history['val_precision'][-1]:.4f}
@@ -416,97 +416,97 @@ class ClassificationTrainer:
             plt.savefig(plot_path, dpi=300, bbox_inches='tight')
             plt.close()
             
-            print(f"📈 학습 그래프 저장: {plot_path}")
+            print(f"📈 Training graph saved: {plot_path}")
             
         except Exception as e:
-            print(f"⚠️ 그래프 저장 실패: {str(e)}")
+            print(f"⚠️ Graph saving failed: {str(e)}")
     
     def train_with_data_ratio(self, ratios=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], 
                              metric='val_f1'):
         """
-        데이터 비율을 조절하며 모델 학습 수행
+        Train model with adjusted data ratios
         
         Args:
-            ratios: 사용할 데이터 비율 리스트
-            metric: 모델 선택 기준 메트릭
+            ratios: List of data ratios to use
+            metric: Model selection criterion metric
             
         Returns:
-            dict: 학습 결과 딕셔너리
+            dict: Training results dictionary
         """
         print("="*80)
-        print("🎯 Classification 모델 학습 시작")
+        print("🎯 Starting Classification Model Training")
         print("="*80)
         
-        # 전체 데이터셋 로드
-        print("📂 데이터셋 로딩 중...")
+        # Load full dataset
+        print("📂 Loading dataset...")
         try:
             full_dataset = ObjectDataset(self.class0_dir, self.class1_dir, 
                                        transform=self.data_transforms['train'])
         except Exception as e:
-            print(f"❌ 데이터셋 로딩 실패: {str(e)}")
+            print(f"❌ Dataset loading failed: {str(e)}")
             return {}
         
-        # 클래스별 인덱스 추출
+        # Extract class-wise indices
         class_indices = {0: [], 1: []}
         for i, (_, label) in enumerate(full_dataset.samples):
             class_indices[label].append(i)
         
-        print(f"📊 클래스별 데이터 분포:")
-        print(f"  - 클래스 0: {len(class_indices[0])}개 이미지")
-        print(f"  - 클래스 1: {len(class_indices[1])}개 이미지")
+        print(f"📊 Class-wise data distribution:")
+        print(f"  - Class 0: {len(class_indices[0])} images")
+        print(f"  - Class 1: {len(class_indices[1])} images")
         
-        # 데이터가 너무 적은 경우 경고
+        # Warning if data is too small
         total_samples = len(class_indices[0]) + len(class_indices[1])
         if total_samples < 100:
-            print("⚠️ 경고: 데이터 수가 매우 적습니다(100개 미만). 추가 데이터 수집을 권장합니다.")
+            print("⚠️ Warning: Very small dataset (less than 100). Additional data collection recommended.")
         
-        val_ratio = 0.15  # 검증 세트 비율
+        val_ratio = 0.15  # Validation set ratio
         results = {'ratios': [], 'best_scores': [], 'best_epochs': [], 'histories': []}
         
-        print(f"\n🔄 학습할 데이터 비율: {ratios}")
-        print(f"🎯 모델 선택 기준: {metric}")
+        print(f"\n🔄 Data ratios to train: {ratios}")
+        print(f"🎯 Model selection criterion: {metric}")
         
-        # 각 데이터 비율에 대해 학습 실행
+        # Execute training for each data ratio
         for i, ratio in enumerate(ratios):
             print(f"\n{'='*60}")
-            print(f"📊 데이터 비율: {ratio*100:.0f}% ({i+1}/{len(ratios)})")
+            print(f"📊 Data ratio: {ratio*100:.0f}% ({i+1}/{len(ratios)})")
             print(f"{'='*60}")
             
             try:
-                # 각 클래스에서 비율만큼 데이터 선택
+                # Select data by ratio from each class
                 train_indices = []
                 for label in [0, 1]:
                     class_size = len(class_indices[label])
                     num_samples = int(class_size * ratio)
                     
                     if num_samples < 3:
-                        print(f"⚠️ 경고: 클래스 {label}의 데이터가 너무 적습니다 ({num_samples}개)")
+                        print(f"⚠️ Warning: Too few data points for class {label} ({num_samples})")
                     
-                    # 점층적 선택 (항상 동일한 순서)
+                    # Stratified selection (always same order)
                     train_indices.extend(class_indices[label][:num_samples])
                 
-                # 학습/검증 분할
-                val_size = max(int(len(train_indices) * val_ratio), 2)  # 최소 2개는 검증용
+                # Training/validation split
+                val_size = max(int(len(train_indices) * val_ratio), 2)  # At least 2 for validation
                 train_size = len(train_indices) - val_size
                 
-                # 인덱스 섞기 (재현 가능하도록)
+                # Shuffle indices (reproducibly)
                 random.shuffle(train_indices)
                 train_subset = Subset(full_dataset, train_indices[val_size:])
                 
-                # 검증 데이터셋 (별도 변환 적용)
+                # Validation dataset (apply separate transformation)
                 val_dataset = ObjectDataset(self.class0_dir, self.class1_dir, 
                                           transform=self.data_transforms['val'])
                 val_subset = Subset(val_dataset, train_indices[:val_size])
                 
-                print(f"📊 데이터 분할:")
-                print(f"  - 학습 세트: {len(train_subset)}개")
-                print(f"  - 검증 세트: {len(val_subset)}개")
+                print(f"📊 Data split:")
+                print(f"  - Training set: {len(train_subset)}")
+                print(f"  - Validation set: {len(val_subset)}")
                 
-                # 배치 크기 조정 (데이터가 적은 경우)
+                # Adjust batch size (when data is small)
                 actual_batch_size = min(self.batch_size, len(train_subset) // 2)
-                actual_batch_size = max(actual_batch_size, 1)  # 최소 1개
+                actual_batch_size = max(actual_batch_size, 1)  # At least 1
                 
-                # 데이터 로더 생성
+                # Create data loaders
                 dataloaders = {
                     'train': DataLoader(train_subset, batch_size=actual_batch_size, 
                                       shuffle=True, num_workers=4, pin_memory=True),
@@ -514,31 +514,31 @@ class ClassificationTrainer:
                                     shuffle=False, num_workers=4, pin_memory=True)
                 }
                 
-                print(f"⚙️ 실제 배치 크기: {actual_batch_size}")
+                print(f"⚙️ Actual batch size: {actual_batch_size}")
                 
-                # 모델 생성
+                # Create model
                 model = self.create_model()
                 
-                # 클래스 불균형 처리를 위한 가중치 계산
+                # Calculate weights for class imbalance handling
                 class_samples = [len(class_indices[0]), len(class_indices[1])]
                 if min(class_samples) > 0:
                     weights = [len(full_dataset) / (2 * count) if count > 0 else 1.0 
                              for count in class_samples]
                     class_weights = torch.FloatTensor(weights).to(self.device)
                     criterion = nn.CrossEntropyLoss(weight=class_weights)
-                    print(f"⚖️ 클래스 가중치 적용: {[f'{w:.3f}' for w in weights]}")
+                    print(f"⚖️ Class weights applied: {[f'{w:.3f}' for w in weights]}")
                 else:
                     criterion = nn.CrossEntropyLoss()
                 
-                # 옵티마이저 설정
+                # Optimizer setup
                 trainable_params = [param for param in model.parameters() if param.requires_grad]
                 optimizer = optim.Adam(
                     trainable_params, 
-                    lr=0.0005,  # 낮은 학습률
-                    weight_decay=0.0001  # L2 정규화
+                    lr=0.0005,  # Low learning rate
+                    weight_decay=0.0001  # L2 regularization
                 )
                 
-                # 학습률 스케줄러
+                # Learning rate scheduler
                 scheduler = ReduceLROnPlateau(
                     optimizer,
                     mode='min',
@@ -548,38 +548,38 @@ class ClassificationTrainer:
                     min_lr=1e-7
                 )
                 
-                # 모델 학습
+                # Train model
                 history, best_score, best_epoch = self.train_model(
                     model, dataloaders, criterion, optimizer, scheduler, 
                     ratio, metric, patience=10
                 )
                 
-                # 결과 저장
+                # Save results
                 results['ratios'].append(ratio)
                 results['best_scores'].append(best_score)
                 results['best_epochs'].append(best_epoch)
                 results['histories'].append(history)
                 
-                # 학습 그래프 저장
+                # Save training graph
                 self.plot_training_history(history, ratio)
                 
-                print(f"✅ {ratio*100:.0f}% 데이터 학습 완료:")
-                print(f"   - 최고 성능 ({metric}): {best_score:.4f} (에폭 {best_epoch})")
+                print(f"✅ {ratio*100:.0f}% data training completed:")
+                print(f"   - Best performance ({metric}): {best_score:.4f} (epoch {best_epoch})")
                 
             except Exception as e:
-                print(f"❌ {ratio*100:.0f}% 데이터 학습 실패: {str(e)}")
+                print(f"❌ {ratio*100:.0f}% data training failed: {str(e)}")
                 import traceback
                 traceback.print_exc()
                 
-                # 실패한 경우에도 결과에 기록 (0으로)
+                # Record failure in results (with 0)
                 results['ratios'].append(ratio)
                 results['best_scores'].append(0.0)
                 results['best_epochs'].append(0)
                 results['histories'].append({})
         
-        # 전체 결과 요약
+        # Overall results summary
         print("\n" + "="*80)
-        print("🏆 Classification 학습 결과 요약")
+        print("🏆 Classification Training Results Summary")
         print("="*80)
         
         for i, ratio in enumerate(results['ratios']):
@@ -587,36 +587,36 @@ class ClassificationTrainer:
                 score = results['best_scores'][i]
                 epoch = results['best_epochs'][i]
                 status = "✅" if score > 0 else "❌"
-                print(f"{status} 데이터 비율 {ratio*100:3.0f}%: {metric} = {score:.4f} (에폭 {epoch})")
+                print(f"{status} Data ratio {ratio*100:3.0f}%: {metric} = {score:.4f} (epoch {epoch})")
         
-        # 최고 성능 모델 정보
+        # Best performance model information
         if results['best_scores']:
             best_idx = np.argmax(results['best_scores'])
             best_ratio = results['ratios'][best_idx]
             best_performance = results['best_scores'][best_idx]
-            print(f"\n🎯 최고 성능: {best_ratio*100:.0f}% 데이터, {metric} = {best_performance:.4f}")
+            print(f"\n🎯 Best performance: {best_ratio*100:.0f}% data, {metric} = {best_performance:.4f}")
         
-        # 결과 저장
+        # Save results
         results_path = os.path.join(self.output_dir, 'classification_results.json')
         with open(results_path, 'w') as f:
-            # 히스토리는 너무 크므로 제외하고 저장
+            # Exclude histories (too large) when saving
             save_results = {k: v for k, v in results.items() if k != 'histories'}
             json.dump(save_results, f, indent=2)
-        print(f"💾 결과 저장: {results_path}")
+        print(f"💾 Results saved: {results_path}")
         
         return results
 
 if __name__ == "__main__":
-    # 테스트 실행
+    # Test execution
     trainer = ClassificationTrainer(
         class0_dir='./manual_labeling_output/class0',
         class1_dir='./manual_labeling_output/class1',
         output_dir='./models/classification',
         batch_size=16,
-        num_epochs=20,  # 테스트용으로 낮춘 값
+        num_epochs=20,  # Reduced value for testing
         gpu_num=0
     )
     
-    # 테스트용으로 적은 비율만 실행
+    # Execute with reduced ratios for testing
     results = trainer.train_with_data_ratio(ratios=[0.1, 0.5, 1.0])
-    print(f"학습 완료! 결과: {results}")
+    print(f"Training completed! Results: {results}")

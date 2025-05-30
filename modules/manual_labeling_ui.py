@@ -1,7 +1,7 @@
 # modules/manual_labeling_ui.py
 """
-수동 라벨링 UI 모듈
-YOLO로 탐지된 객체들을 사용자가 수동으로 Class 0/1로 분류하는 GUI 제공
+Manual Labeling UI Module
+Provides GUI for users to manually classify objects detected by YOLO into Class 0/1
 """
 
 import os
@@ -15,20 +15,20 @@ from tqdm import tqdm
 
 class ManualLabelingUI:
     """
-    수동 라벨링을 위한 GUI 클래스
-    YOLO로 탐지된 객체들을 사용자가 직접 분류
+    GUI class for manual labeling
+    Users directly classify objects detected by YOLO
     """
     
     def __init__(self, yolo_model_path, images_dir, output_dir, conf_threshold=0.25, iou_threshold=0.5):
         """
-        수동 라벨링 UI 초기화
+        Initialize Manual Labeling UI
         
         Args:
-            yolo_model_path (str): YOLO 모델 경로
-            images_dir (str): 이미지 디렉토리 경로
-            output_dir (str): 결과 저장 디렉토리 경로
-            conf_threshold (float): 객체 검출 신뢰도 임계값
-            iou_threshold (float): IoU 임계값
+            yolo_model_path (str): YOLO model path
+            images_dir (str): Image directory path
+            output_dir (str): Results save directory path
+            conf_threshold (float): Object detection confidence threshold
+            iou_threshold (float): IoU threshold
         """
         self.yolo_model_path = yolo_model_path
         self.images_dir = images_dir
@@ -36,43 +36,43 @@ class ManualLabelingUI:
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
         
-        # YOLO 모델 로드
-        print(f"📥 YOLO 모델 로딩: {yolo_model_path}")
+        # Load YOLO model
+        print(f"📥 Loading YOLO model: {yolo_model_path}")
         self.model = YOLO(yolo_model_path)
         
-        # 출력 디렉토리 설정
+        # Set output directories
         self.class0_dir = os.path.join(output_dir, 'class0')
         self.class1_dir = os.path.join(output_dir, 'class1')
         os.makedirs(self.class0_dir, exist_ok=True)
         os.makedirs(self.class1_dir, exist_ok=True)
         
-        # 이미지 파일 목록
+        # Image file list
         self.image_files = [f for f in os.listdir(images_dir) 
                            if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         
         if not self.image_files:
-            raise ValueError(f"이미지 파일을 찾을 수 없습니다: {images_dir}")
+            raise ValueError(f"No image files found: {images_dir}")
         
-        print(f"📊 처리할 이미지: {len(self.image_files)}개")
+        print(f"📊 Images to process: {len(self.image_files)}")
         
-        # 상태 변수
+        # State variables
         self.current_image_idx = 0
         self.current_objects = []
         self.current_object_idx = 0
         self.total_labeled = 0
         
-        # UI 컴포넌트
+        # UI components
         self.root = None
         self.canvas = None
         self.info_label = None
         self.progress_label = None
         self.photo = None
         
-        # 첫 번째 이미지의 객체들 미리 추출
+        # Pre-extract objects from first image
         self._load_current_image_objects()
         
     def _load_current_image_objects(self):
-        """현재 이미지의 객체들 로드"""
+        """Load objects from current image"""
         if self.current_image_idx >= len(self.image_files):
             self.current_objects = []
             return
@@ -80,11 +80,11 @@ class ManualLabelingUI:
         image_filename = self.image_files[self.current_image_idx]
         image_path = os.path.join(self.images_dir, image_filename)
         
-        # YOLO 추론 실행
+        # Run YOLO inference
         try:
             img = cv2.imread(image_path)
             if img is None:
-                print(f"⚠️ 이미지 로드 실패: {image_path}")
+                print(f"⚠️ Image loading failed: {image_path}")
                 self.current_objects = []
                 return
             
@@ -96,7 +96,7 @@ class ManualLabelingUI:
                 verbose=False
             )
             
-            # 탐지된 객체들 추출
+            # Extract detected objects
             self.current_objects = []
             result = results[0]
             
@@ -105,15 +105,15 @@ class ManualLabelingUI:
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     conf = box.conf[0].cpu().numpy()
                     
-                    # 좌표 정수 변환 및 경계 확인
+                    # Convert coordinates to integers and check boundaries
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                     h, w = img.shape[:2]
                     x1, y1 = max(0, x1), max(0, y1)
                     x2, y2 = min(w, x2), min(h, y2)
                     
-                    # 유효한 바운딩 박스인지 확인
+                    # Check if bounding box is valid
                     if x2 > x1 and y2 > y1:
-                        # 객체 이미지 추출
+                        # Extract object image
                         obj_img = img[y1:y2, x1:x2]
                         
                         if obj_img.size > 0:
@@ -125,40 +125,40 @@ class ManualLabelingUI:
                                 'labeled': False
                             })
             
-            print(f"  📦 {image_filename}: {len(self.current_objects)}개 객체 탐지됨")
+            print(f"  📦 {image_filename}: {len(self.current_objects)} objects detected")
             
         except Exception as e:
-            print(f"⚠️ 객체 탐지 실패 ({image_filename}): {str(e)}")
+            print(f"⚠️ Object detection failed ({image_filename}): {str(e)}")
             self.current_objects = []
     
     def setup_ui(self):
-        """UI 설정"""
+        """Set up UI"""
         self.root = tk.Tk()
         self.root.title("Manual Object Labeling - YOLO Active Learning")
         self.root.geometry("1400x900")
         self.root.configure(bg='#f0f0f0')
         
-        # 메인 프레임
+        # Main frame
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 상단 정보 프레임
+        # Top info frame
         info_frame = ttk.Frame(main_frame)
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # 진행 정보 라벨
+        # Progress info label
         self.progress_label = ttk.Label(info_frame, text="", font=("Arial", 12, "bold"))
         self.progress_label.pack()
         
-        # 상세 정보 라벨
+        # Detailed info label
         self.info_label = ttk.Label(info_frame, text="", font=("Arial", 10))
         self.info_label.pack()
         
-        # 이미지 표시 프레임
+        # Image display frame
         image_frame = ttk.Frame(main_frame)
         image_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
-        # 캔버스 (스크롤 지원)
+        # Canvas (with scroll support)
         canvas_frame = ttk.Frame(image_frame)
         canvas_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -172,16 +172,16 @@ class ManualLabelingUI:
         scrollbar_v.pack(side="right", fill="y")
         scrollbar_h.pack(side="bottom", fill="x")
         
-        # 하단 버튼 프레임
+        # Bottom button frame
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
         
-        # 분류 버튼들 (크고 눈에 띄게)
+        # Classification buttons (large and prominent)
         classify_frame = ttk.Frame(button_frame)
         classify_frame.pack(pady=(0, 10))
         
-        # Class 0 버튼 (초록색)
-        self.class0_btn = tk.Button(classify_frame, text="✅ Class 0 (Keep)\n유지할 객체", 
+        # Class 0 button (green)
+        self.class0_btn = tk.Button(classify_frame, text="✅ Class 0 (Keep)\nObjects to keep", 
                                    command=lambda: self.label_object(0),
                                    font=("Arial", 14, "bold"), 
                                    bg='#4CAF50', fg='white', 
@@ -189,8 +189,8 @@ class ManualLabelingUI:
                                    relief='raised', bd=3)
         self.class0_btn.pack(side=tk.LEFT, padx=10)
         
-        # Class 1 버튼 (빨간색)
-        self.class1_btn = tk.Button(classify_frame, text="❌ Class 1 (Filter)\n필터링할 객체", 
+        # Class 1 button (red)
+        self.class1_btn = tk.Button(classify_frame, text="❌ Class 1 (Filter)\nObjects to filter", 
                                    command=lambda: self.label_object(1),
                                    font=("Arial", 14, "bold"), 
                                    bg='#f44336', fg='white', 
@@ -198,31 +198,31 @@ class ManualLabelingUI:
                                    relief='raised', bd=3)
         self.class1_btn.pack(side=tk.LEFT, padx=10)
         
-        # 네비게이션 버튼들
+        # Navigation buttons
         nav_frame = ttk.Frame(button_frame)
         nav_frame.pack()
         
-        ttk.Button(nav_frame, text="⬅️ 이전 객체", 
+        ttk.Button(nav_frame, text="⬅️ Previous Object", 
                   command=self.prev_object).pack(side=tk.LEFT, padx=5)
-        ttk.Button(nav_frame, text="➡️ 다음 객체", 
+        ttk.Button(nav_frame, text="➡️ Next Object", 
                   command=self.next_object).pack(side=tk.LEFT, padx=5)
-        ttk.Button(nav_frame, text="⬆️ 이전 이미지", 
+        ttk.Button(nav_frame, text="⬆️ Previous Image", 
                   command=self.prev_image).pack(side=tk.LEFT, padx=5)
-        ttk.Button(nav_frame, text="⬇️ 다음 이미지", 
+        ttk.Button(nav_frame, text="⬇️ Next Image", 
                   command=self.next_image).pack(side=tk.LEFT, padx=5)
         
-        # 유틸리티 버튼들
+        # Utility buttons
         util_frame = ttk.Frame(button_frame)
         util_frame.pack(pady=(10, 0))
         
-        ttk.Button(util_frame, text="🔄 새로고침", 
+        ttk.Button(util_frame, text="🔄 Refresh", 
                   command=self.refresh_display).pack(side=tk.LEFT, padx=5)
-        ttk.Button(util_frame, text="📊 통계 보기", 
+        ttk.Button(util_frame, text="📊 View Statistics", 
                   command=self.show_statistics).pack(side=tk.LEFT, padx=5)
-        ttk.Button(util_frame, text="✅ 라벨링 완료", 
+        ttk.Button(util_frame, text="✅ Finish Labeling", 
                   command=self.finish_labeling).pack(side=tk.RIGHT, padx=5)
         
-        # 키보드 단축키 바인딩
+        # Keyboard shortcut bindings
         self.root.bind('<Key-1>', lambda e: self.label_object(0))
         self.root.bind('<Key-2>', lambda e: self.label_object(1))
         self.root.bind('<Left>', lambda e: self.prev_object())
@@ -231,75 +231,75 @@ class ManualLabelingUI:
         self.root.bind('<Down>', lambda e: self.next_image())
         self.root.bind('<Escape>', lambda e: self.finish_labeling())
         
-        # 포커스 설정 (키보드 이벤트를 받기 위해)
+        # Set focus (to receive keyboard events)
         self.root.focus_set()
         
-        print("✅ UI 설정 완료")
-        print("📝 단축키:")
+        print("✅ UI setup completed")
+        print("📝 Shortcuts:")
         print("  - 1: Class 0 (Keep)")
         print("  - 2: Class 1 (Filter)")
-        print("  - 방향키: 네비게이션")
-        print("  - ESC: 완료")
+        print("  - Arrow keys: Navigation")
+        print("  - ESC: Finish")
     
     def update_display(self):
-        """현재 이미지와 객체 표시 업데이트"""
+        """Update current image and object display"""
         if self.current_image_idx >= len(self.image_files):
             self.finish_labeling()
             return
         
-        # 현재 이미지 정보
+        # Current image info
         image_filename = self.image_files[self.current_image_idx]
         image_path = os.path.join(self.images_dir, image_filename)
         
-        # 진행상황 업데이트
+        # Update progress
         total_images = len(self.image_files)
         total_objects = len(self.current_objects)
         
         if total_objects == 0:
-            # 객체가 없는 경우 다음 이미지로
+            # Move to next image if no objects
             self.next_image()
             return
         
-        progress_text = (f"이미지 {self.current_image_idx + 1}/{total_images} | "
-                        f"객체 {self.current_object_idx + 1}/{total_objects} | "
-                        f"라벨링됨: {self.total_labeled}개")
+        progress_text = (f"Image {self.current_image_idx + 1}/{total_images} | "
+                        f"Object {self.current_object_idx + 1}/{total_objects} | "
+                        f"Labeled: {self.total_labeled}")
         self.progress_label.config(text=progress_text)
         
-        # 현재 객체 정보
+        # Current object info
         current_obj = self.current_objects[self.current_object_idx]
-        info_text = (f"파일: {image_filename} | "
-                    f"신뢰도: {current_obj['confidence']:.3f} | "
-                    f"상태: {'✅ 완료' if current_obj['labeled'] else '⏳ 대기'}")
+        info_text = (f"File: {image_filename} | "
+                    f"Confidence: {current_obj['confidence']:.3f} | "
+                    f"Status: {'✅ Done' if current_obj['labeled'] else '⏳ Waiting'}")
         self.info_label.config(text=info_text)
         
-        # 이미지 로드 및 표시
+        # Load and display image
         try:
             img = cv2.imread(image_path)
             if img is None:
-                print(f"⚠️ 이미지 로드 실패: {image_path}")
+                print(f"⚠️ Image loading failed: {image_path}")
                 return
             
-            # 이미지에 바운딩 박스들 그리기
+            # Draw bounding boxes on image
             img_display = img.copy()
             
             for i, obj in enumerate(self.current_objects):
                 bbox = obj['bbox']
                 x1, y1, x2, y2 = bbox
                 
-                # 현재 객체는 초록색, 나머지는 회색
+                # Current object in green, others in gray
                 if i == self.current_object_idx:
-                    color = (0, 255, 0)  # 초록색
+                    color = (0, 255, 0)  # Green
                     thickness = 3
                 elif obj['labeled']:
-                    color = (128, 128, 128)  # 회색 (완료됨)
+                    color = (128, 128, 128)  # Gray (completed)
                     thickness = 1
                 else:
-                    color = (200, 200, 200)  # 연한 회색
+                    color = (200, 200, 200)  # Light gray
                     thickness = 1
                 
                 cv2.rectangle(img_display, (x1, y1), (x2, y2), color, thickness)
                 
-                # 객체 번호 표시
+                # Display object number
                 label_text = f"#{i+1}"
                 if obj['labeled']:
                     label_text += " ✓"
@@ -307,11 +307,11 @@ class ManualLabelingUI:
                 cv2.putText(img_display, label_text, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
             
-            # 현재 객체 확대 표시 (오른쪽 상단)
+            # Display current object enlarged (top right)
             current_obj = self.current_objects[self.current_object_idx]
             obj_img = current_obj['image']
             
-            # 객체 이미지 크기 조정 (최대 200x200)
+            # Resize object image (max 200x200)
             h, w = obj_img.shape[:2]
             max_size = 200
             if max(h, w) > max_size:
@@ -321,14 +321,14 @@ class ManualLabelingUI:
             else:
                 obj_img_resized = obj_img
             
-            # 객체 이미지를 메인 이미지 오른쪽 상단에 합성
+            # Composite object image on main image (top right)
             oh, ow = obj_img_resized.shape[:2]
             img_h, img_w = img_display.shape[:2]
             
-            # 여백 확보
+            # Ensure margin
             margin = 10
             if img_w > ow + margin and img_h > oh + margin:
-                # 배경 박스 그리기
+                # Draw background box
                 cv2.rectangle(img_display, 
                              (img_w - ow - margin, margin), 
                              (img_w - margin, oh + margin + 30), 
@@ -338,24 +338,24 @@ class ManualLabelingUI:
                              (img_w - margin, oh + margin + 30), 
                              (0, 0, 0), 2)
                 
-                # 객체 이미지 합성
+                # Composite object image
                 img_display[margin:margin+oh, img_w-ow-margin:img_w-margin] = obj_img_resized
                 
-                # "현재 객체" 텍스트
+                # "Current Object" text
                 cv2.putText(img_display, "Current Object", 
                            (img_w - ow - margin, margin + oh + 20),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
             
-            # OpenCV → PIL → PhotoImage 변환
+            # Convert OpenCV → PIL → PhotoImage
             img_rgb = cv2.cvtColor(img_display, cv2.COLOR_BGR2RGB)
             img_pil = Image.fromarray(img_rgb)
             
-            # 캔버스 크기에 맞게 조정
+            # Adjust to canvas size
             canvas_width = self.canvas.winfo_width()
             canvas_height = self.canvas.winfo_height()
             
             if canvas_width > 1 and canvas_height > 1:
-                # 이미지 크기 조정
+                # Resize image
                 img_w, img_h = img_pil.size
                 scale = min(canvas_width/img_w, canvas_height/img_h) * 0.9
                 
@@ -363,53 +363,53 @@ class ManualLabelingUI:
                     new_w, new_h = int(img_w * scale), int(img_h * scale)
                     img_pil = img_pil.resize((new_w, new_h), Image.Resampling.LANCZOS)
             
-            # PhotoImage 생성 및 표시
+            # Create PhotoImage and display
             self.photo = ImageTk.PhotoImage(img_pil)
             
-            # 캔버스 클리어 및 이미지 표시
+            # Clear canvas and display image
             self.canvas.delete("all")
             self.canvas.create_image(canvas_width//2, canvas_height//2, 
                                    image=self.photo, anchor=tk.CENTER)
             
-            # 스크롤 영역 업데이트
+            # Update scroll area
             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
             
         except Exception as e:
-            print(f"⚠️ 이미지 표시 실패: {str(e)}")
+            print(f"⚠️ Image display failed: {str(e)}")
     
     def save_object(self, obj_img, class_label, image_filename, obj_idx):
-        """객체 이미지를 해당 클래스 디렉토리에 저장"""
+        """Save object image to corresponding class directory"""
         output_dir = self.class0_dir if class_label == 0 else self.class1_dir
         
-        # 파일명 생성: 원본이미지명_객체인덱스.jpg
+        # Generate filename: original_image_name_object_index.jpg
         base_name = os.path.splitext(image_filename)[0]
         obj_filename = f"{base_name}_obj_{obj_idx:03d}.jpg"
         obj_path = os.path.join(output_dir, obj_filename)
         
-        # 이미지 저장
+        # Save image
         try:
             cv2.imwrite(obj_path, obj_img)
-            print(f"  💾 저장: {obj_filename} → Class {class_label}")
+            print(f"  💾 Saved: {obj_filename} → Class {class_label}")
             return True
         except Exception as e:
-            print(f"  ❌ 저장 실패: {obj_filename} - {str(e)}")
+            print(f"  ❌ Save failed: {obj_filename} - {str(e)}")
             return False
     
     def label_object(self, class_label):
-        """현재 객체에 라벨 지정"""
+        """Assign label to current object"""
         if not self.current_objects or self.current_object_idx >= len(self.current_objects):
             return
         
         current_obj = self.current_objects[self.current_object_idx]
         
-        # 이미 라벨링된 객체는 스킵
+        # Skip already labeled objects
         if current_obj['labeled']:
             self.next_object()
             return
         
         image_filename = self.image_files[self.current_image_idx]
         
-        # 객체 저장
+        # Save object
         success = self.save_object(
             current_obj['image'], 
             class_label, 
@@ -418,37 +418,37 @@ class ManualLabelingUI:
         )
         
         if success:
-            # 라벨링 완료 표시
+            # Mark as labeled
             current_obj['labeled'] = True
             self.total_labeled += 1
             
-            # 다음 객체로 자동 이동
+            # Auto move to next object
             self.next_object()
     
     def next_object(self):
-        """다음 객체로 이동"""
+        """Move to next object"""
         if not self.current_objects:
             self.next_image()
             return
         
-        # 다음 라벨링되지 않은 객체 찾기
+        # Find next unlabeled object
         start_idx = self.current_object_idx
         while True:
             self.current_object_idx = (self.current_object_idx + 1) % len(self.current_objects)
             
-            # 한 바퀴 돌았으면 다음 이미지로
+            # If completed full circle, move to next image
             if self.current_object_idx == start_idx:
                 self.next_image()
                 break
             
-            # 라벨링되지 않은 객체 발견
+            # Found unlabeled object
             if not self.current_objects[self.current_object_idx]['labeled']:
                 break
         
         self.update_display()
     
     def prev_object(self):
-        """이전 객체로 이동"""
+        """Move to previous object"""
         if not self.current_objects:
             return
         
@@ -456,7 +456,7 @@ class ManualLabelingUI:
         self.update_display()
     
     def next_image(self):
-        """다음 이미지로 이동"""
+        """Move to next image"""
         self.current_image_idx += 1
         self.current_object_idx = 0
         
@@ -464,12 +464,12 @@ class ManualLabelingUI:
             self.finish_labeling()
             return
         
-        # 새 이미지의 객체들 로드
+        # Load objects from new image
         self._load_current_image_objects()
         self.update_display()
     
     def prev_image(self):
-        """이전 이미지로 이동"""
+        """Move to previous image"""
         if self.current_image_idx > 0:
             self.current_image_idx -= 1
             self.current_object_idx = 0
@@ -477,101 +477,101 @@ class ManualLabelingUI:
             self.update_display()
     
     def refresh_display(self):
-        """화면 새로고침"""
+        """Refresh display"""
         self.update_display()
     
     def show_statistics(self):
-        """라벨링 통계 표시"""
+        """Display labeling statistics"""
         class0_count = len(os.listdir(self.class0_dir))
         class1_count = len(os.listdir(self.class1_dir))
         total_labeled = class0_count + class1_count
         
-        # 현재 이미지까지의 총 객체 수 추정
+        # Estimate total objects up to current image
         processed_images = self.current_image_idx
         avg_objects_per_image = self.total_labeled / max(1, processed_images) if processed_images > 0 else 0
         
-        stats_message = f"""📊 라벨링 통계
+        stats_message = f"""📊 Labeling Statistics
         
-✅ Class 0 (Keep): {class0_count}개
-❌ Class 1 (Filter): {class1_count}개
-📊 총 라벨링: {total_labeled}개
+✅ Class 0 (Keep): {class0_count} items
+❌ Class 1 (Filter): {class1_count} items
+📊 Total labeled: {total_labeled} items
 
-📸 처리된 이미지: {processed_images}/{len(self.image_files)}
-📦 평균 객체/이미지: {avg_objects_per_image:.1f}개
+📸 Processed images: {processed_images}/{len(self.image_files)}
+📦 Average objects/image: {avg_objects_per_image:.1f}
 
-진행률: {processed_images/len(self.image_files)*100:.1f}%"""
+Progress: {processed_images/len(self.image_files)*100:.1f}%"""
         
-        messagebox.showinfo("라벨링 통계", stats_message)
+        messagebox.showinfo("Labeling Statistics", stats_message)
     
     def finish_labeling(self):
-        """라벨링 완료"""
+        """Finish labeling"""
         class0_count = len(os.listdir(self.class0_dir))
         class1_count = len(os.listdir(self.class1_dir))
         total_count = class0_count + class1_count
         
         if total_count == 0:
-            result = messagebox.askyesno("경고", 
-                                       "라벨링된 객체가 없습니다.\n"
-                                       "정말 종료하시겠습니까?")
+            result = messagebox.askyesno("Warning", 
+                                       "No objects have been labeled.\n"
+                                       "Are you sure you want to exit?")
             if not result:
                 return
         
-        completion_message = f"""🎉 라벨링 완료!
+        completion_message = f"""🎉 Labeling Completed!
 
-📊 최종 결과:
-  ✅ Class 0 (Keep): {class0_count}개
-  ❌ Class 1 (Filter): {class1_count}개
-  📊 총합: {total_count}개
+📊 Final Results:
+  ✅ Class 0 (Keep): {class0_count} items
+  ❌ Class 1 (Filter): {class1_count} items
+  📊 Total: {total_count} items
 
-💾 저장 위치:
+💾 Save Location:
   📁 {self.output_dir}
 
-이 데이터는 Classification 모델 학습에 사용됩니다."""
+This data will be used for Classification model training."""
         
-        messagebox.showinfo("완료", completion_message)
+        messagebox.showinfo("Completed", completion_message)
         
         if self.root:
             self.root.quit()
             self.root.destroy()
     
     def run(self):
-        """UI 실행"""
+        """Run UI"""
         if not self.image_files:
-            print("❌ 라벨링할 이미지가 없습니다.")
+            print("❌ No images to label.")
             return None
         
-        print(f"🏷️ 수동 라벨링 UI 시작")
-        print(f"  - 총 이미지: {len(self.image_files)}개")
-        print(f"  - 첫 이미지 객체: {len(self.current_objects)}개")
+        print(f"🏷️ Starting Manual Labeling UI")
+        print(f"  - Total images: {len(self.image_files)}")
+        print(f"  - First image objects: {len(self.current_objects)}")
         
-        # UI 설정 및 실행
+        # Set up and run UI
         self.setup_ui()
         
-        # 초기 화면 표시 (UI가 렌더링된 후)
+        # Initial display (after UI rendering)
         self.root.after(500, self.update_display)
         
         try:
-            # 메인 루프 실행
+            # Run main loop
             self.root.mainloop()
         except Exception as e:
-            print(f"⚠️ UI 실행 중 오류: {str(e)}")
+            print(f"⚠️ Error during UI execution: {str(e)}")
         
-        # 결과 검증
+        # Validate results
         class0_count = len(os.listdir(self.class0_dir))
         class1_count = len(os.listdir(self.class1_dir))
         
         if class0_count > 0 or class1_count > 0:
-            print(f"✅ 라벨링 완료: Class 0={class0_count}개, Class 1={class1_count}개")
+            print(f"✅ Labeling completed: Class 0={class0_count}, Class 1={class1_count}")
             return self.output_dir
         else:
-            print("⚠️ 라벨링된 데이터가 없습니다.")
+            print("⚠️ No labeled data.")
             return None
 
 if __name__ == "__main__":
-    # 테스트 실행
-    print("🧪 Manual Labeling UI 테스트")
+    # Test execution
+    print("🧪 Manual Labeling UI Test")
     
-    # 테스트 설정
+    # Test configuration
     ui = ManualLabelingUI(
         yolo_model_path="./results/01_initial_yolo/yolov8_100pct.pt",
         images_dir="./dataset/images",
@@ -580,10 +580,10 @@ if __name__ == "__main__":
         iou_threshold=0.5
     )
     
-    # UI 실행
+    # Run UI
     result = ui.run()
     
     if result:
-        print(f"✅ 테스트 완료: {result}")
+        print(f"✅ Test completed: {result}")
     else:
-        print("❌ 테스트 실패")
+        print("❌ Test failed")

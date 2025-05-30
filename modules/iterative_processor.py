@@ -1,7 +1,7 @@
 # modules/iterative_processor.py
 """
-Iterative Active Learning Process 모듈
-여러 YOLO 모델에 대해 Classification 모델과 결합된 반복적 학습을 수행하는 모듈
+Iterative Active Learning Process Module
+Module for performing iterative learning combining YOLO models with Classification models
 """
 
 import os
@@ -15,32 +15,32 @@ import shutil
 import json
 from tqdm import tqdm
 
-# 로컬 모듈 임포트
+# Local module imports
 from modules.yolo_active_learning import YOLOActiveLearning
 
 class IterativeProcessor:
     """
-    Iterative Active Learning 프로세스 관리자
-    여러 YOLO 모델에 대해 Classification 모델을 활용한 반복적 학습을 수행
+    Iterative Active Learning Process Manager
+    Performs iterative learning utilizing Classification models for multiple YOLO models
     """
     
     def __init__(self, yolo_models_dir, classifier_path, image_dir, label_dir, output_dir,
                  conf_threshold=0.25, iou_threshold=0.5, class_conf_threshold=0.5, 
                  max_cycles=10, gpu_num=0):
         """
-        Iterative Processor 초기화
+        Initialize Iterative Processor
         
         Args:
-            yolo_models_dir (str): YOLO 모델들이 저장된 디렉토리
-            classifier_path (str): 분류 모델 경로
-            image_dir (str): 이미지 데이터셋 경로
-            label_dir (str): 정답 라벨 경로
-            output_dir (str): 결과 저장 경로
-            conf_threshold (float): 객체 검출 신뢰도 임계값
-            iou_threshold (float): IoU 임계값
-            class_conf_threshold (float): 분류 모델 신뢰도 임계값
-            max_cycles (int): 최대 학습 반복 횟수
-            gpu_num (int): 사용할 GPU 번호
+            yolo_models_dir (str): Directory containing YOLO models
+            classifier_path (str): Classification model path
+            image_dir (str): Image dataset path
+            label_dir (str): Ground truth label path
+            output_dir (str): Results save path
+            conf_threshold (float): Object detection confidence threshold
+            iou_threshold (float): IoU threshold
+            class_conf_threshold (float): Classification model confidence threshold
+            max_cycles (int): Maximum number of training iterations
+            gpu_num (int): GPU number to use
         """
         self.yolo_models_dir = yolo_models_dir
         self.classifier_path = classifier_path
@@ -53,58 +53,58 @@ class IterativeProcessor:
         self.max_cycles = max_cycles
         self.gpu_num = gpu_num
         
-        # 설정 정보 출력
-        print("🔧 Iterative Processor 설정:")
-        print(f"  - YOLO 모델 디렉토리: {yolo_models_dir}")
-        print(f"  - 분류 모델: {classifier_path}")
-        print(f"  - 이미지 디렉토리: {image_dir}")
-        print(f"  - 라벨 디렉토리: {label_dir}")
-        print(f"  - 결과 저장: {output_dir}")
-        print(f"  - 최대 사이클: {max_cycles}")
+        # Print configuration information
+        print("🔧 Iterative Processor Configuration:")
+        print(f"  - YOLO model directory: {yolo_models_dir}")
+        print(f"  - Classification model: {classifier_path}")
+        print(f"  - Image directory: {image_dir}")
+        print(f"  - Label directory: {label_dir}")
+        print(f"  - Results save: {output_dir}")
+        print(f"  - Maximum cycles: {max_cycles}")
         print(f"  - GPU: {gpu_num}")
         
-        # 출력 디렉토리 생성
+        # Create output directory
         os.makedirs(output_dir, exist_ok=True)
         
-        # 모델 검증
+        # Validate models
         self._validate_inputs()
         
-        print("✅ Iterative Processor 초기화 완료")
+        print("✅ Iterative Processor initialization completed")
         
     def _validate_inputs(self):
-        """입력 파라미터 검증"""
-        # YOLO 모델 디렉토리 확인
+        """Validate input parameters"""
+        # Check YOLO model directory
         if not os.path.exists(self.yolo_models_dir):
-            raise FileNotFoundError(f"YOLO 모델 디렉토리를 찾을 수 없습니다: {self.yolo_models_dir}")
+            raise FileNotFoundError(f"YOLO model directory not found: {self.yolo_models_dir}")
             
-        # 분류 모델 파일 확인
+        # Check classification model file
         if not os.path.exists(self.classifier_path):
-            raise FileNotFoundError(f"분류 모델을 찾을 수 없습니다: {self.classifier_path}")
+            raise FileNotFoundError(f"Classification model not found: {self.classifier_path}")
             
-        # 이미지 디렉토리 확인
+        # Check image directory
         if not os.path.exists(self.image_dir):
-            raise FileNotFoundError(f"이미지 디렉토리를 찾을 수 없습니다: {self.image_dir}")
+            raise FileNotFoundError(f"Image directory not found: {self.image_dir}")
             
-        # 라벨 디렉토리 확인
+        # Check label directory
         if not os.path.exists(self.label_dir):
-            raise FileNotFoundError(f"라벨 디렉토리를 찾을 수 없습니다: {self.label_dir}")
+            raise FileNotFoundError(f"Label directory not found: {self.label_dir}")
         
-        print("✅ 입력 파라미터 검증 완료")
+        print("✅ Input parameter validation completed")
     
     def get_yolo_models(self):
-        """YOLO 모델 파일 목록 가져오기"""
-        print("🔍 YOLO 모델 파일 검색 중...")
+        """Get list of YOLO model files"""
+        print("🔍 Searching for YOLO model files...")
         
-        # .pt 파일 검색
+        # Search for .pt files
         model_paths = glob.glob(os.path.join(self.yolo_models_dir, "*.pt"))
         
         if not model_paths:
-            raise Exception(f"YOLO 모델(.pt 파일)을 찾을 수 없습니다: {self.yolo_models_dir}")
+            raise Exception(f"No YOLO models (.pt files) found: {self.yolo_models_dir}")
         
-        # 파일명 기준으로 정렬
+        # Sort by filename
         model_paths.sort()
         
-        print(f"📊 총 {len(model_paths)}개의 YOLO 모델을 찾았습니다:")
+        print(f"📊 Found {len(model_paths)} YOLO models:")
         for i, path in enumerate(model_paths):
             model_name = os.path.basename(path)
             file_size = os.path.getsize(path) / (1024 * 1024)  # MB
@@ -114,31 +114,31 @@ class IterativeProcessor:
     
     def run_single_experiment(self, model_path):
         """
-        단일 YOLO 모델에 대한 Active Learning 실험 실행
+        Run Active Learning experiment for a single YOLO model
         
         Args:
-            model_path (str): YOLO 모델 파일 경로
+            model_path (str): YOLO model file path
             
         Returns:
-            dict: 실험 결과 정보
+            dict: Experiment result information
         """
         model_filename = os.path.basename(model_path)
         model_name = os.path.splitext(model_filename)[0]
         
-        # 모델별 출력 디렉토리
+        # Model-specific output directory
         model_output_dir = os.path.join(self.output_dir, model_name)
         
         print(f"\n{'='*80}")
-        print(f"🚀 YOLO 모델 실험 시작: {model_filename}")
-        print(f"📁 결과 저장 경로: {model_output_dir}")
+        print(f"🚀 Starting YOLO model experiment: {model_filename}")
+        print(f"📁 Results save path: {model_output_dir}")
         print(f"{'='*80}")
         
-        # 실험 시작 시간 기록
+        # Record experiment start time
         start_time = time.time()
         
         try:
-            # YOLOActiveLearning 인스턴스 생성
-            print("🏗️ Active Learning 시스템 초기화 중...")
+            # Create YOLOActiveLearning instance
+            print("🏗️ Initializing Active Learning system...")
             active_learning = YOLOActiveLearning(
                 model_path=model_path,
                 classifier_path=self.classifier_path,
@@ -150,24 +150,24 @@ class IterativeProcessor:
                 class_conf_threshold=self.class_conf_threshold,
                 max_cycles=self.max_cycles,
                 gpu_num=self.gpu_num,
-                use_classifier=True  # 분류 모델 사용
+                use_classifier=True  # Use classification model
             )
             
-            print("✅ Active Learning 시스템 초기화 완료")
+            print("✅ Active Learning system initialization completed")
             
-            # Active Learning 프로세스 실행
-            print("🔄 Active Learning 프로세스 실행 중...")
+            # Run Active Learning process
+            print("🔄 Running Active Learning process...")
             active_learning.run()
             
-            # 실행 시간 계산
+            # Calculate execution time
             elapsed_time = time.time() - start_time
             
-            print(f"✅ YOLO 모델 {model_filename} 실험 완료")
-            print(f"⏰ 실행 시간: {elapsed_time/60:.1f}분")
+            print(f"✅ YOLO model {model_filename} experiment completed")
+            print(f"⏰ Execution time: {elapsed_time/60:.1f} minutes")
             
             return {
-                "status": "완료",
-                "message": "성공적으로 실행됨",
+                "status": "Completed",
+                "message": "Successfully executed",
                 "model_name": model_name,
                 "model_path": model_path,
                 "output_dir": model_output_dir,
@@ -177,20 +177,20 @@ class IterativeProcessor:
             
         except Exception as e:
             elapsed_time = time.time() - start_time
-            error_message = f"오류 발생: {str(e)}"
+            error_message = f"Error occurred: {str(e)}"
             error_detail = traceback.format_exc()
             
             print(f"\n{'!'*80}")
-            print(f"❌ 오류 발생: {model_filename} 실험 중 오류")
-            print(f"💥 오류 메시지: {str(e)}")
-            print(f"⏰ 실행 시간: {elapsed_time/60:.1f}분")
+            print(f"❌ Error occurred: Error during {model_filename} experiment")
+            print(f"💥 Error message: {str(e)}")
+            print(f"⏰ Execution time: {elapsed_time/60:.1f} minutes")
             print(f"{'!'*80}")
             
-            # 오류 로그 저장
+            # Save error log
             self._save_error_log(model_output_dir, error_message, error_detail, elapsed_time)
             
             return {
-                "status": "실패",
+                "status": "Failed",
                 "message": str(e),
                 "model_name": model_name,
                 "model_path": model_path,
@@ -200,7 +200,7 @@ class IterativeProcessor:
             }
     
     def _save_error_log(self, output_dir, error_message, error_detail, elapsed_time):
-        """오류 로그 저장"""
+        """Save error log"""
         try:
             os.makedirs(output_dir, exist_ok=True)
             error_log_dir = os.path.join(output_dir, "error_logs")
@@ -208,48 +208,48 @@ class IterativeProcessor:
             
             error_log_path = os.path.join(error_log_dir, "error.log")
             with open(error_log_path, "w", encoding='utf-8') as f:
-                f.write(f"실험 실행 오류 로그\n")
+                f.write(f"Experiment Execution Error Log\n")
                 f.write(f"="*50 + "\n")
-                f.write(f"오류 발생 시간: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"실행 시간: {elapsed_time/60:.1f}분\n")
-                f.write(f"오류 메시지: {error_message}\n\n")
-                f.write(f"상세 오류 내용:\n")
+                f.write(f"Error occurrence time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Execution time: {elapsed_time/60:.1f} minutes\n")
+                f.write(f"Error message: {error_message}\n\n")
+                f.write(f"Detailed error content:\n")
                 f.write(f"-"*50 + "\n")
                 f.write(f"{error_detail}\n")
             
-            print(f"📝 오류 로그 저장: {error_log_path}")
+            print(f"📝 Error log saved: {error_log_path}")
             
         except Exception as log_error:
-            print(f"⚠️ 오류 로그 저장 실패: {str(log_error)}")
+            print(f"⚠️ Error log save failed: {str(log_error)}")
     
     def collect_metrics(self, experiment_results):
         """
-        모든 실험 결과에서 메트릭 수집 및 통합
+        Collect and integrate metrics from all experiment results
         
         Args:
-            experiment_results (dict): 실험 결과 딕셔너리
+            experiment_results (dict): Experiment results dictionary
             
         Returns:
-            pandas.DataFrame: 통합된 메트릭 데이터프레임
+            pandas.DataFrame: Integrated metrics dataframe
         """
-        print("📊 실험 메트릭 수집 중...")
+        print("📊 Collecting experiment metrics...")
         
         combined_metrics_df = pd.DataFrame()
         collected_count = 0
         
         for model_name, result in experiment_results.items():
-            if result["status"] == "완료":
+            if result["status"] == "Completed":
                 metrics_file = os.path.join(result["output_dir"], "performance_metrics.csv")
                 
                 if os.path.exists(metrics_file):
                     try:
                         model_metrics = pd.read_csv(metrics_file)
                         
-                        # 모델 이름이 없으면 추가
+                        # Add model name if not present
                         if 'Model' not in model_metrics.columns:
                             model_metrics['Model'] = model_name
                         
-                        # 실험 정보 추가
+                        # Add experiment information
                         model_metrics['Experiment_Status'] = 'Success'
                         model_metrics['Elapsed_Time'] = result.get("elapsed_time", 0)
                         
@@ -257,36 +257,36 @@ class IterativeProcessor:
                                                        ignore_index=True)
                         collected_count += 1
                         
-                        print(f"  ✅ {model_name}: {len(model_metrics)}개 사이클 메트릭 수집")
+                        print(f"  ✅ {model_name}: Collected {len(model_metrics)} cycle metrics")
                         
                     except Exception as e:
-                        print(f"  ❌ {model_name}: 메트릭 파일 읽기 오류 - {str(e)}")
+                        print(f"  ❌ {model_name}: Metrics file read error - {str(e)}")
                 else:
-                    print(f"  ⚠️ {model_name}: 메트릭 파일 없음")
+                    print(f"  ⚠️ {model_name}: No metrics file")
             else:
-                print(f"  💥 {model_name}: 실험 실패로 메트릭 없음")
+                print(f"  💥 {model_name}: No metrics due to experiment failure")
         
-        print(f"📈 총 {collected_count}개 모델의 메트릭 수집 완료")
+        print(f"📈 Metrics collection completed for {collected_count} models")
         
         return combined_metrics_df
     
     def create_comparison_tables(self, combined_metrics_df, output_dir):
-        """성능 비교 테이블 생성"""
-        print("📊 성능 비교 테이블 생성 중...")
+        """Create performance comparison tables"""
+        print("📊 Creating performance comparison tables...")
         
         if combined_metrics_df.empty:
-            print("⚠️ 메트릭 데이터가 없어 비교 테이블을 생성할 수 없습니다")
+            print("⚠️ Cannot create comparison tables due to no metric data")
             return
         
         try:
-            # 메트릭별 비교 테이블 생성
+            # Create comparison tables for each metric
             metrics_to_compare = ['mAP50', 'Precision', 'Recall', 'F1-Score', 
                                 'Detected_Objects', 'Filtered_Objects']
             
             for metric in metrics_to_compare:
                 if metric in combined_metrics_df.columns:
                     try:
-                        # 사이클과 모델을 기준으로 피벗 테이블 생성
+                        # Create pivot table based on cycle and model
                         pivot_df = combined_metrics_df.pivot_table(
                             index='Cycle', 
                             columns='Model', 
@@ -294,70 +294,70 @@ class IterativeProcessor:
                             aggfunc='mean'
                         )
                         
-                        # 테이블 저장
+                        # Save table
                         table_file = os.path.join(output_dir, f"{metric}_comparison_table.csv")
                         pivot_df.to_csv(table_file)
                         
-                        print(f"  📄 {metric} 비교 테이블 저장: {table_file}")
+                        print(f"  📄 {metric} comparison table saved: {table_file}")
                         
-                        # 최종 사이클 성능 요약
+                        # Final cycle performance summary
                         if not pivot_df.empty:
                             final_cycle = pivot_df.index.max()
                             final_performance = pivot_df.loc[final_cycle].sort_values(ascending=False)
                             
-                            print(f"  🏆 {metric} 최종 성능 (사이클 {final_cycle}):")
+                            print(f"  🏆 {metric} final performance (cycle {final_cycle}):")
                             for model, score in final_performance.head(3).items():
                                 if not pd.isna(score):
                                     print(f"    {model}: {score:.4f}")
                         
                     except Exception as e:
-                        print(f"  ❌ {metric} 테이블 생성 실패: {str(e)}")
+                        print(f"  ❌ {metric} table creation failed: {str(e)}")
                 else:
-                    print(f"  ⚠️ {metric} 컬럼이 없습니다")
+                    print(f"  ⚠️ {metric} column not found")
             
-            # 전체 메트릭 요약 테이블
+            # Overall metrics summary table
             summary_file = os.path.join(output_dir, "performance_summary.csv")
             combined_metrics_df.to_csv(summary_file, index=False)
-            print(f"📋 전체 성능 요약 저장: {summary_file}")
+            print(f"📋 Overall performance summary saved: {summary_file}")
             
         except Exception as e:
-            print(f"❌ 비교 테이블 생성 중 오류: {str(e)}")
+            print(f"❌ Error during comparison table creation: {str(e)}")
     
     def generate_experiment_report(self, experiment_results, combined_metrics_df, output_dir):
-        """실험 결과 종합 보고서 생성"""
-        print("📝 실험 보고서 생성 중...")
+        """Generate comprehensive experiment results report"""
+        print("📝 Generating experiment report...")
         
         report_file = os.path.join(output_dir, "experiment_report.txt")
         
         try:
             with open(report_file, "w", encoding='utf-8') as f:
-                # 보고서 헤더
+                # Report header
                 f.write("="*80 + "\n")
-                f.write("ITERATIVE ACTIVE LEARNING 실험 보고서\n")
+                f.write("ITERATIVE ACTIVE LEARNING EXPERIMENT REPORT\n")
                 f.write("="*80 + "\n")
-                f.write(f"생성 일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"실험 설정:\n")
-                f.write(f"  - 최대 사이클: {self.max_cycles}\n")
-                f.write(f"  - 신뢰도 임계값: {self.conf_threshold}\n")
-                f.write(f"  - IoU 임계값: {self.iou_threshold}\n")
-                f.write(f"  - 분류 신뢰도 임계값: {self.class_conf_threshold}\n")
+                f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Experiment settings:\n")
+                f.write(f"  - Maximum cycles: {self.max_cycles}\n")
+                f.write(f"  - Confidence threshold: {self.conf_threshold}\n")
+                f.write(f"  - IoU threshold: {self.iou_threshold}\n")
+                f.write(f"  - Classification confidence threshold: {self.class_conf_threshold}\n")
                 f.write(f"  - GPU: {self.gpu_num}\n")
                 f.write("\n")
                 
-                # 실험 결과 요약
+                # Experiment results summary
                 total_models = len(experiment_results)
-                successful_count = sum(1 for r in experiment_results.values() if r["status"] == "완료")
+                successful_count = sum(1 for r in experiment_results.values() if r["status"] == "Completed")
                 failed_count = total_models - successful_count
                 
-                f.write("📊 실험 결과 요약\n")
+                f.write("📊 Experiment Results Summary\n")
                 f.write("-"*50 + "\n")
-                f.write(f"총 모델 수: {total_models}개\n")
-                f.write(f"성공: {successful_count}개 ({successful_count/total_models*100:.1f}%)\n")
-                f.write(f"실패: {failed_count}개 ({failed_count/total_models*100:.1f}%)\n")
+                f.write(f"Total models: {total_models}\n")
+                f.write(f"Successful: {successful_count} ({successful_count/total_models*100:.1f}%)\n")
+                f.write(f"Failed: {failed_count} ({failed_count/total_models*100:.1f}%)\n")
                 f.write("\n")
                 
-                # 각 모델별 상세 결과
-                f.write("📋 모델별 상세 결과\n")
+                # Detailed results for each model
+                f.write("📋 Detailed Results by Model\n")
                 f.write("-"*50 + "\n")
                 
                 for model_name, result in experiment_results.items():
@@ -365,68 +365,68 @@ class IterativeProcessor:
                     elapsed_time = result.get("elapsed_time", 0)
                     
                     f.write(f"\n🔹 {model_name}\n")
-                    f.write(f"   상태: {status}\n")
-                    f.write(f"   실행시간: {elapsed_time/60:.1f}분\n")
+                    f.write(f"   Status: {status}\n")
+                    f.write(f"   Execution time: {elapsed_time/60:.1f} minutes\n")
                     
-                    if status == "완료":
-                        f.write(f"   결과 디렉토리: {result['output_dir']}\n")
-                        f.write(f"   완료 사이클: {result.get('cycles_completed', 'N/A')}\n")
+                    if status == "Completed":
+                        f.write(f"   Results directory: {result['output_dir']}\n")
+                        f.write(f"   Completed cycles: {result.get('cycles_completed', 'N/A')}\n")
                     else:
-                        f.write(f"   오류 메시지: {result['message']}\n")
+                        f.write(f"   Error message: {result['message']}\n")
                 
-                # 성능 통계 (메트릭이 있는 경우)
+                # Performance statistics (if metrics available)
                 if not combined_metrics_df.empty:
-                    f.write("\n\n📈 성능 통계\n")
+                    f.write("\n\n📈 Performance Statistics\n")
                     f.write("-"*50 + "\n")
                     
-                    # 최종 사이클의 평균 성능
+                    # Average performance of final cycle
                     final_cycle = combined_metrics_df['Cycle'].max()
                     final_metrics = combined_metrics_df[combined_metrics_df['Cycle'] == final_cycle]
                     
                     if not final_metrics.empty:
-                        f.write(f"최종 사이클 ({final_cycle}) 평균 성능:\n")
+                        f.write(f"Final cycle ({final_cycle}) average performance:\n")
                         
                         for metric in ['mAP50', 'Precision', 'Recall', 'F1-Score']:
                             if metric in final_metrics.columns:
                                 avg_score = final_metrics[metric].mean()
                                 f.write(f"  {metric}: {avg_score:.4f}\n")
                         
-                        f.write(f"\n객체 탐지 통계:\n")
+                        f.write(f"\nObject detection statistics:\n")
                         if 'Detected_Objects' in final_metrics.columns:
                             total_detected = final_metrics['Detected_Objects'].sum()
-                            f.write(f"  총 탐지 객체: {total_detected:,}개\n")
+                            f.write(f"  Total detected objects: {total_detected:,}\n")
                         
                         if 'Filtered_Objects' in final_metrics.columns:
                             total_filtered = final_metrics['Filtered_Objects'].sum()
-                            f.write(f"  필터링된 객체: {total_filtered:,}개\n")
+                            f.write(f"  Filtered objects: {total_filtered:,}\n")
                             
                             if total_detected > 0:
                                 filter_rate = total_filtered / (total_detected + total_filtered) * 100
-                                f.write(f"  필터링 비율: {filter_rate:.1f}%\n")
+                                f.write(f"  Filter rate: {filter_rate:.1f}%\n")
                     
-                    # 최고 성능 모델
+                    # Best performing model
                     if 'F1-Score' in combined_metrics_df.columns:
                         best_performance = combined_metrics_df.loc[combined_metrics_df['F1-Score'].idxmax()]
-                        f.write(f"\n🏆 최고 성능 모델:\n")
-                        f.write(f"  모델: {best_performance['Model']}\n")
-                        f.write(f"  사이클: {best_performance['Cycle']}\n")
+                        f.write(f"\n🏆 Best performing model:\n")
+                        f.write(f"  Model: {best_performance['Model']}\n")
+                        f.write(f"  Cycle: {best_performance['Cycle']}\n")
                         f.write(f"  F1-Score: {best_performance['F1-Score']:.4f}\n")
                 
-                # 실험 파일 목록
-                f.write(f"\n\n📁 생성된 파일\n")
+                # List of experiment files
+                f.write(f"\n\n📁 Generated Files\n")
                 f.write("-"*50 + "\n")
-                f.write(f"- 실험 보고서: {report_file}\n")
-                f.write(f"- 성능 요약: {os.path.join(output_dir, 'performance_summary.csv')}\n")
-                f.write(f"- 비교 테이블: {output_dir}/*_comparison_table.csv\n")
-                f.write(f"- 모델별 결과: {output_dir}/[model_name]/\n")
+                f.write(f"- Experiment report: {report_file}\n")
+                f.write(f"- Performance summary: {os.path.join(output_dir, 'performance_summary.csv')}\n")
+                f.write(f"- Comparison tables: {output_dir}/*_comparison_table.csv\n")
+                f.write(f"- Model-specific results: {output_dir}/[model_name]/\n")
                 
-            print(f"📄 실험 보고서 저장: {report_file}")
+            print(f"📄 Experiment report saved: {report_file}")
             
         except Exception as e:
-            print(f"❌ 보고서 생성 실패: {str(e)}")
+            print(f"❌ Report generation failed: {str(e)}")
     
     def save_experiment_config(self, output_dir):
-        """실험 설정을 JSON 파일로 저장"""
+        """Save experiment configuration to JSON file"""
         config = {
             "experiment_datetime": datetime.now().isoformat(),
             "yolo_models_dir": self.yolo_models_dir,
@@ -447,113 +447,113 @@ class IterativeProcessor:
         try:
             with open(config_file, "w") as f:
                 json.dump(config, f, indent=2)
-            print(f"⚙️ 실험 설정 저장: {config_file}")
+            print(f"⚙️ Experiment configuration saved: {config_file}")
         except Exception as e:
-            print(f"⚠️ 설정 저장 실패: {str(e)}")
+            print(f"⚠️ Configuration save failed: {str(e)}")
     
     def run_iterative_experiments(self):
         """
-        모든 YOLO 모델에 대해 Iterative 실험 실행
+        Run iterative experiments for all YOLO models
         
         Returns:
-            dict: 종합 실험 결과
+            dict: Comprehensive experiment results
         """
         print("="*80)
-        print("🚀 ITERATIVE ACTIVE LEARNING 실험 시작")
+        print("🚀 STARTING ITERATIVE ACTIVE LEARNING EXPERIMENTS")
         print("="*80)
         
-        # 실험 시작 시간 기록
+        # Record total experiment start time
         total_start_time = time.time()
         
-        # 타임스탬프를 이용한 실험 디렉토리 생성
+        # Create experiment directory with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         experiment_dir = os.path.join(self.output_dir, f"iterative_experiment_{timestamp}")
         os.makedirs(experiment_dir, exist_ok=True)
         
-        print(f"📁 실험 결과 저장 디렉토리: {experiment_dir}")
+        print(f"📁 Experiment results save directory: {experiment_dir}")
         
-        # 실험 설정 저장
+        # Save experiment configuration
         self.save_experiment_config(experiment_dir)
         
-        # YOLO 모델 목록 가져오기
+        # Get YOLO model list
         try:
             model_paths = self.get_yolo_models()
         except Exception as e:
-            print(f"❌ YOLO 모델 로딩 실패: {str(e)}")
+            print(f"❌ YOLO model loading failed: {str(e)}")
             return {"error": str(e)}
         
-        # 실험 결과 저장용 딕셔너리
+        # Dictionary to store experiment results
         experiment_results = {}
         
-        # 진행률 표시를 위한 tqdm
-        print(f"\n🔄 {len(model_paths)}개 모델에 대한 실험 시작")
+        # Progress display with tqdm
+        print(f"\n🔄 Starting experiments for {len(model_paths)} models")
         
         model_pbar = tqdm(model_paths, desc="Models", unit="model")
         
-        # 각 YOLO 모델에 대해 실험 수행
+        # Perform experiments for each YOLO model
         for i, model_path in enumerate(model_pbar):
             model_filename = os.path.basename(model_path)
             model_name = os.path.splitext(model_filename)[0]
             
-            # 진행률 업데이트
+            # Update progress
             model_pbar.set_description(f"Processing {model_name}")
             
-            print(f"\n🎯 실험 진행: {i+1}/{len(model_paths)} - {model_name}")
+            print(f"\n🎯 Experiment progress: {i+1}/{len(model_paths)} - {model_name}")
             
-            # 개별 모델 실험 실행
+            # Run individual model experiment
             result = self.run_single_experiment(model_path)
             experiment_results[model_name] = result
             
-            # 중간 결과 출력
-            if result["status"] == "완료":
-                print(f"✅ {model_name} 완료 ({result['elapsed_time']/60:.1f}분)")
+            # Output intermediate results
+            if result["status"] == "Completed":
+                print(f"✅ {model_name} completed ({result['elapsed_time']/60:.1f} minutes)")
             else:
-                print(f"❌ {model_name} 실패: {result['message']}")
+                print(f"❌ {model_name} failed: {result['message']}")
         
         model_pbar.close()
         
-        # 전체 실험 시간 계산
+        # Calculate total experiment time
         total_elapsed_time = time.time() - total_start_time
         
-        print(f"\n⏰ 전체 실험 시간: {total_elapsed_time/60:.1f}분")
+        print(f"\n⏰ Total experiment time: {total_elapsed_time/60:.1f} minutes")
         
-        # 메트릭 수집 및 통합
-        print("\n📊 실험 결과 분석 중...")
+        # Collect and integrate metrics
+        print("\n📊 Analyzing experiment results...")
         combined_metrics_df = self.collect_metrics(experiment_results)
         
-        # 통합 메트릭 저장
+        # Save integrated metrics
         if not combined_metrics_df.empty:
             combined_metrics_file = os.path.join(experiment_dir, "combined_performance_metrics.csv")
             combined_metrics_df.to_csv(combined_metrics_file, index=False)
-            print(f"💾 통합 메트릭 저장: {combined_metrics_file}")
+            print(f"💾 Integrated metrics saved: {combined_metrics_file}")
             
-            # 비교 테이블 생성
+            # Create comparison tables
             self.create_comparison_tables(combined_metrics_df, experiment_dir)
         
-        # 종합 보고서 생성
+        # Generate comprehensive report
         self.generate_experiment_report(experiment_results, combined_metrics_df, experiment_dir)
         
-        # 최종 결과 요약
-        successful_count = sum(1 for r in experiment_results.values() if r["status"] == "완료")
+        # Final results summary
+        successful_count = sum(1 for r in experiment_results.values() if r["status"] == "Completed")
         failed_count = len(experiment_results) - successful_count
         
         print("\n" + "="*80)
-        print("🎉 ITERATIVE ACTIVE LEARNING 실험 완료")
+        print("🎉 ITERATIVE ACTIVE LEARNING EXPERIMENTS COMPLETED")
         print("="*80)
-        print(f"📊 실험 결과:")
-        print(f"  - 총 모델: {len(model_paths)}개")
-        print(f"  - 성공: {successful_count}개")
-        print(f"  - 실패: {failed_count}개")
-        print(f"  - 성공률: {successful_count/len(model_paths)*100:.1f}%")
-        print(f"⏰ 총 실행 시간: {total_elapsed_time/60:.1f}분")
-        print(f"📁 결과 저장 위치: {experiment_dir}")
+        print(f"📊 Experiment results:")
+        print(f"  - Total models: {len(model_paths)}")
+        print(f"  - Successful: {successful_count}")
+        print(f"  - Failed: {failed_count}")
+        print(f"  - Success rate: {successful_count/len(model_paths)*100:.1f}%")
+        print(f"⏰ Total execution time: {total_elapsed_time/60:.1f} minutes")
+        print(f"📁 Results save location: {experiment_dir}")
         
         if not combined_metrics_df.empty:
-            print(f"📈 메트릭 요약:")
-            print(f"  - 통합 메트릭: {len(combined_metrics_df)}개 기록")
-            print(f"  - 비교 테이블: {len([f for f in os.listdir(experiment_dir) if f.endswith('_comparison_table.csv')])}개")
+            print(f"📈 Metrics summary:")
+            print(f"  - Integrated metrics: {len(combined_metrics_df)} records")
+            print(f"  - Comparison tables: {len([f for f in os.listdir(experiment_dir) if f.endswith('_comparison_table.csv')])}")
         
-        # 반환할 결과 딕셔너리 구성
+        # Construct return results dictionary
         final_results = {
             "experiment_dir": experiment_dir,
             "results": experiment_results,
@@ -571,13 +571,13 @@ class IterativeProcessor:
         return final_results
     
     def cleanup_temp_files(self):
-        """임시 파일 정리"""
-        print("🧹 임시 파일 정리 중...")
+        """Clean up temporary files"""
+        print("🧹 Cleaning up temporary files...")
         
         temp_patterns = [
-            "runs/detect/*/",  # YOLO 학습 임시 결과
-            "*.yaml",          # 임시 YAML 파일
-            "__pycache__/",    # Python 캐시
+            "runs/detect/*/",  # YOLO training temporary results
+            "*.yaml",          # Temporary YAML files
+            "__pycache__/",    # Python cache
         ]
         
         for pattern in temp_patterns:
@@ -590,15 +590,15 @@ class IterativeProcessor:
                         os.remove(temp_file)
                 
                 if temp_files:
-                    print(f"  🗑️ {len(temp_files)}개 {pattern} 파일/폴더 정리됨")
+                    print(f"  🗑️ {len(temp_files)} {pattern} files/folders cleaned up")
             except Exception as e:
-                print(f"  ⚠️ {pattern} 정리 실패: {str(e)}")
+                print(f"  ⚠️ {pattern} cleanup failed: {str(e)}")
         
-        print("✅ 임시 파일 정리 완료")
+        print("✅ Temporary files cleanup completed")
 
 def main():
-    """테스트 실행을 위한 메인 함수"""
-    # 테스트 설정
+    """Main function for test execution"""
+    # Test configuration
     processor = IterativeProcessor(
         yolo_models_dir="./models/initial_yolo",
         classifier_path="./models/classification/densenet121_100.pth",
@@ -608,22 +608,22 @@ def main():
         conf_threshold=0.25,
         iou_threshold=0.5,
         class_conf_threshold=0.5,
-        max_cycles=5,  # 테스트용으로 낮춤
+        max_cycles=5,  # Reduced for testing
         gpu_num=0
     )
     
-    # 실험 실행
+    # Run experiments
     results = processor.run_iterative_experiments()
     
-    # 결과 출력
+    # Output results
     if "error" not in results:
-        print("\n🎯 실험 완료! 주요 결과:")
+        print("\n🎯 Experiments completed! Key results:")
         summary = results["summary"]
-        print(f"  - 성공률: {summary['success_rate']:.1f}%")
-        print(f"  - 총 시간: {summary['total_time_minutes']:.1f}분")
-        print(f"  - 시간당 실험: {summary['experiments_per_hour']:.1f}개")
+        print(f"  - Success rate: {summary['success_rate']:.1f}%")
+        print(f"  - Total time: {summary['total_time_minutes']:.1f} minutes")
+        print(f"  - Experiments per hour: {summary['experiments_per_hour']:.1f}")
     else:
-        print(f"❌ 실험 실패: {results['error']}")
+        print(f"❌ Experiments failed: {results['error']}")
 
 if __name__ == "__main__":
     main()
