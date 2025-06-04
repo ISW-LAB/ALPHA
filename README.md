@@ -27,7 +27,7 @@ ALPHA is a novel software engineering framework that implements human-in-the-loo
 
 ## 🏗️ Architecture
 
-The ALPHA framework consists of four main components:
+![Image](https://github.com/user-attachments/assets/8ad2d97d-a16c-42d8-9def-fb41bca8cd22)
 
 ## 🚀 Quick Start
 
