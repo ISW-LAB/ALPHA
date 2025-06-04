@@ -9,22 +9,6 @@
 
 ALPHA is a novel software engineering framework that implements human-in-the-loop methodology through collaborative AI components for biological image analysis. The framework specifically integrates **object detection models** and **validation filters** to create robust automated labeling systems that significantly reduce the annotation burden on domain experts while maintaining high accuracy.
 
-### 🎯 Key Features
-
-- **Human-in-the-Loop Design**: Seamlessly integrates human expertise with AI automation
-- **Dual AI Components**: Combines YOLO object detection with DenseNet classification for robust performance
-- **Noise Reduction**: Advanced validation filters reduce annotation errors by 83%
-- **Data Efficiency**: Achieves near-optimal performance using only 10% of original labeled data
-- **Cross-Domain Generalization**: Robust performance across different biological datasets
-- **Modular Architecture**: Easy to extend and customize for various biological applications
-
-### 📊 Performance Highlights
-
-- **F1-scores**: 0.89-0.95 on blood smear datasets with minimal data
-- **Cross-domain F1-scores**: 0.88-0.97 across different domains
-- **Error Reduction**: 83% reduction in intentional annotation errors
-- **Data Requirement**: Only 10% of original labeled data needed
-
 ## 🏗️ Architecture
 
 ![Image](https://github.com/user-attachments/assets/8ad2d97d-a16c-42d8-9def-fb41bca8cd22)
@@ -52,5 +36,21 @@ ALPHA is a novel software engineering framework that implements human-in-the-loo
 
 3. **Verify installation**
    ```bash
-   python -c "import torch; from ultralytics import YOLO; print('✅ Installation successful!')"    
+   python -c "import torch; from ultralytics import YOLO; print('✅ Installation successful!')"
+
+ ### 🎯 Key Features
+
+- **Human-in-the-Loop Design**: Seamlessly integrates human expertise with AI automation
+- **Dual AI Components**: Combines YOLO object detection with DenseNet classification for robust performance
+- **Noise Reduction**: Advanced validation filters reduce annotation errors by 83%
+- **Data Efficiency**: Achieves near-optimal performance using only 10% of original labeled data
+- **Cross-Domain Generalization**: Robust performance across different biological datasets
+- **Modular Architecture**: Easy to extend and customize for various biological applications
+
+### 📊 Performance Highlights
+
+- **F1-scores**: 0.89-0.95 on blood smear datasets with minimal data
+- **Cross-domain F1-scores**: 0.88-0.97 across different domains
+- **Error Reduction**: 83% reduction in intentional annotation errors
+- **Data Requirement**: Only 10% of original labeled data needed
 
