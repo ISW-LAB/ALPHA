@@ -45,9 +45,7 @@ The ALPHA framework consists of four main components:
    cd alpha-framework
 
 2. **Install dependencies**
-   # Automatic installation (recommended)
+   ```bash
    chmod +x install_requirements.sh
    ./install_requirements.sh
-
-   # Or manual installation
    pip install -r requirements.txt   
