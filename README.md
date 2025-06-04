@@ -49,3 +49,7 @@ The ALPHA framework consists of four main components:
    chmod +x install_requirements.sh
    ./install_requirements.sh
    pip install -r requirements.txt   
+
+3. **Verify installation**
+   ```bash
+   python -c "import torch; from ultralytics import YOLO; print('✅ Installation successful!')"    
