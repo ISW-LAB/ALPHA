@@ -1,4 +1,3 @@
-# ALPHA framework
 # ALPHA Framework
 
 **A**utomated **L**abeling **P**rocess using a **H**uman-in-the-Loop Framework with **A**rtificial Intelligence
@@ -29,3 +28,18 @@ ALPHA is a novel software engineering framework that implements human-in-the-loo
 ## 🏗️ Architecture
 
 The ALPHA framework consists of four main components:
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.8+
+- CUDA-capable GPU (recommended)
+- 8GB+ RAM
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/alpha-framework.git
+   cd alpha-framework
