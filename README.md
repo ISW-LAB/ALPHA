@@ -43,3 +43,11 @@ The ALPHA framework consists of four main components:
    ```bash
    git clone https://github.com/your-username/alpha-framework.git
    cd alpha-framework
+
+2. **Install dependencies**
+   # Automatic installation (recommended)
+   chmod +x install_requirements.sh
+   ./install_requirements.sh
+
+   # Or manual installation
+   pip install -r requirements.txt   
