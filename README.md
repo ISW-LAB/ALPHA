@@ -19,7 +19,6 @@ ALPHA is a novel software engineering framework that implements human-in-the-loo
 
 - Python 3.8+
 - CUDA-capable GPU (recommended)
-- 8GB+ RAM
 
 ### Installation
 
