@@ -161,6 +161,8 @@ python main.py --step 1 --gpu_num 0 --config my_config.json
 - **Real-time Preview**: See detection results immediately
 - **Easy Navigation**: Browse through detected objects efficiently
 - **Requirements**: GUI libraries (tkinter)
+- 
+![Image](https://github.com/user-attachments/assets/85f62cd2-c232-4878-8046-79f8b12e4b61)
 
 **Ubuntu/Debian Setup:**
 ```bash
