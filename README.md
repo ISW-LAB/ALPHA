@@ -287,9 +287,6 @@ python main.py --gpu_num 1
 - **Data Requirement**: Only 10% of original labeled data needed
 
 ## 📞 Support
-For issues, questions, or contributions, please:
-1. Check the troubleshooting section above
-2. Review the configuration parameters
-3. Open an issue on GitHub with detailed error messages and system information
+If you have any questions or provide your cell images, please contact us by email(kc.jeong-isw@chungbuk.ac.kr, gc.jo-isw@chungbuk.ac.kr).
 
 
